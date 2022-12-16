@@ -131,15 +131,33 @@ with st.sidebar:
     lottie_image1 = load_lottie_url('https://assets10.lottiefiles.com/packages/lf20_ofa3xwo7.json')
     st_lottie(lottie_image1)
 
-# Load the API key from a local file
-try:
-    with open('api_key.txt') as api_key:
-        openai.api_key = api_key.read()
-except:
-    st.markdown(
-        "Put a file called 'api_key.txt' in the Quest folder. Make sure the file has your OpenAI API key inside.")
-    st.markdown("[Find your API key here](https://beta.openai.com/account/api-keys)")
-    st.stop()
+# Load the API key
+if 'api_key' not in st.session_state:
+    try:
+        with open('api_key.txt') as api_key:
+            st.session_state['api_key'] = api_key.read()
+    except:
+        with st.form('API Key'):
+            api_key = st.text_input(label='Insert your API key here')
+            api_submitted = st.form_submit_button("Submit")
+            api_checkbox = st.checkbox('Save my key')
+            st.markdown("NOTE: By saving your key, it will be stored in a local file without encryption.")
+
+        st.markdown("[Find your API key here](https://beta.openai.com/account/api-keys)")
+        
+        if api_submitted and api_checkbox:
+            f = open("api_key.txt", "a")
+            f.write(api_key)
+            f.close()
+            
+        if api_submitted:
+            st.warning("Hi")
+            st.session_state['api_key'] = api_key
+            st.experimental_rerun()
+        
+        st.stop()
+  
+openai.api_key = st.session_state['api_key']
 
 # App layout
 response = st.container()

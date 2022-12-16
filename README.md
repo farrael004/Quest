@@ -5,13 +5,11 @@
 
  Anyone willing to help build this tool is welcome to send merge requests.
 
-## Setup (for running locally)
+## Setup (for Windows)
 
 Install [python 3.10](https://www.python.org/downloads/release/python-3100/)
 
-Download/Clone this repo.
-
-In the repo folder, create a file called `api_key.txt`. Paste your Open AI API in this file. You can find your API key [here](https://beta.openai.com/account/api-keys).
+Download the [install.bat](https://github.com/farrael004/Quest/blob/main/install.bat) file and put it where you want the app to be installed.
 
 Double click the `install.bat` file.
 
