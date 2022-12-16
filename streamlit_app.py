@@ -156,7 +156,7 @@ with response:
     chat_so_far = ''
     for i, text in enumerate(st.session_state['conversation']):
         chat_so_far += text + '\n'
-        if i < 6: continue
+        if i < len(starting_conversation): continue
         if text[:4] == 'User':
             text = '👤' + text
         else:
