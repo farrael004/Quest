@@ -15,6 +15,12 @@ In the repo folder, create a file called `api_key.txt`. Paste your Open AI API i
 
 Double click the `install.bat` file.
 
+## Problems installing?
+
+If when you double-click ```install.bat``` it gives you an error. Open it using notepad and edit the following lines to ```py``` instead of ```python```. Then double-click the ```install.bat``` file again.
+
+![Troubleshoot1](tutorial/Troubleshooting1.png)
+
 ## Run locally
 
 To quickly open the app after installation, double-click the `start.bat` file (Windows only). A command shell will open and two links will be displayed. Navigate to any of the two links in your browser.

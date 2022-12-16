@@ -16,7 +16,7 @@ def google_search(search: str):
     try:
         res.raise_for_status()
     except HTTPError as err:
-        if err.code == 429:
+        if err.code == 429: # Client Error: Too Many Requests for url
             st.warning("😵 Your IP is being rate limited by Google. If you are using a VPN try disabling it. Alternatively, you can try searching again another day.😢")
             raise err
         else:
