@@ -20,7 +20,18 @@ def google_search(search: str):
              if '/url?q=' in link.get('href') and
              'accounts.google.com' not in link.get('href') and
              'support.google.com' not in link.get('href')}
-    text = soup.get_text(separator='\n').split('All results\nAll results\nVerbatim\n')[1].split('Next >')[0]
+    text = soup.get_text(separator='\n')
+    
+    
+    # Here I'm predicting where the useful information in the string is. Since some have reported different formatting, it is in a try block.
+    try:
+        text = text.split('All results\nAll results\nVerbatim\n')[1]
+    except:
+        pass
+    try:
+        text = text.split('Next >')[0]
+    except:
+        pass
 
     return text, list(links)
 
