@@ -45,7 +45,8 @@ st.markdown('---')
 
 # Setting how factual/creative the model will be. This can be tunned.
 assistant_settings = st.sidebar.selectbox('Assistant settings',
-                                          ['Strictly Factual', 'Factual', 'Neutral', 'Creative', 'Very Creative'])
+                                          ['Strictly Factual', 'Factual', 'Neutral', 'Creative', 'Very Creative'],
+                                          help='Determines how close to the facts already presented the Assistent will be.')
 
 match assistant_settings:
     case 'Strictly Factual':
@@ -147,8 +148,8 @@ with chat:
         user_chat_text = st.text_input(label="Ask me anything")
         chat_submitted = st.form_submit_button("Submit")
 
-# Initialise the conversation
-if 'conversation' not in st.session_state:
+# Initialize the conversation if it was not initialized before or if the assistant settings changed
+if 'conversation' not in st.session_state or starting_conversation != st.session_state['conversation'][:len(starting_conversation)]:
     st.session_state['conversation'] = starting_conversation
 
 with response:
