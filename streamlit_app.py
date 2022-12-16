@@ -1,4 +1,5 @@
 import streamlit as st
+from urllib.error import HTTPError
 import openai
 import requests
 import bs4
@@ -7,10 +8,19 @@ from transformers import GPT2TokenizerFast
 
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
-@st.cache
+@st.cache(suppress_st_warning=True)
 def google_search(search: str):
     res = requests.get('https://google.com/search?q=' + search)
-    res.raise_for_status()
+    
+    # Raise if a HTTPError occured
+    try:
+        res.raise_for_status()
+    except HTTPError as err:
+        if err.code == 429:
+            st.warning("😵 Your IP is being rate limited by Google. If you are using a VPN try disabling it. Alternatively, you can try searching again another day.😢")
+            raise err
+        else:
+            raise err
 
     soup = bs4.BeautifulSoup(res.text, 'html.parser')
 
