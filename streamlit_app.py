@@ -1,9 +1,9 @@
 import streamlit as st
+from streamlit_lottie import st_lottie
 from urllib.error import HTTPError
 import openai
 import requests
 import bs4
-
 from transformers import GPT2TokenizerFast
 
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
@@ -58,12 +58,22 @@ def gpt3_call(prompt: str, tokens: int, temperature: int = 1, stop=None):
 
     return response["choices"][0]["text"].replace('\n', '  \n')
 
+
+@st.cache
+def load_lottie_url(url: str):
+    try:
+        r = requests.get(url)
+        if r.status_code != 200:
+            return None
+        return r.json()
+    except:
+        return None
+
 def markdown_litteral(string: str):
     return string.replace('$','\$')
 
 def num_of_tokens(prompt: str):
     return len(tokenizer(prompt)['input_ids'])
-
 
 st.set_page_config(page_title='Quest🔍')
 st.title("Quest🔍")
@@ -116,6 +126,10 @@ match assistant_settings:
                                  'Assistant: Hello, my name is Assistant. How can I help you?',
                                  "User: Can you show me how to loop between 0 and 9 in python?",
                                  "Assistant: Sure. Here's how you can loop between 0 and 9 in python:\n```python\nfor i in range(10):\n    print(i)\n```"]
+
+with st.sidebar:
+    lottie_image1 = load_lottie_url('https://assets10.lottiefiles.com/packages/lf20_ofa3xwo7.json')
+    st_lottie(lottie_image1)
 
 # Load the API key from a local file
 try:
