@@ -9,9 +9,9 @@
 
 Install [python 3.10](https://www.python.org/downloads/release/python-3100/)
 
-Download `stream_app.py`, `requirements.txt`, `install.bat` (Windows only), and `start.bat` (Windows only). Put these files in a folder.
+Download/Clone this repo.
 
-In this folder, create a file called `api_key.txt`. Paste your Open AI API in this file. You can find your API key [here](https://beta.openai.com/account/api-keys)
+In the repo folder, create a file called `api_key.txt`. Paste your Open AI API in this file. You can find your API key [here](https://beta.openai.com/account/api-keys).
 
 Double click the `install.bat` file.
 
