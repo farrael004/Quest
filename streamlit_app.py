@@ -3,6 +3,9 @@ import openai
 import requests
 import bs4
 
+from transformers import GPT2TokenizerFast
+
+tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
 @st.cache
 def google_search(search: str):
@@ -12,9 +15,11 @@ def google_search(search: str):
     soup = bs4.BeautifulSoup(res.text, 'html.parser')
 
     link_elements = soup.select('a')
-    links = {link.get('href').split('&sa=U&ved=')[0].replace('/url?q=', '') for link in link_elements if
-              '/url?q=' in link.get('href') and 'accounts.google.com' not in link.get(
-                  'href') and 'support.google.com' not in link.get('href')}
+    links = {link.get('href').split('&sa=U&ved=')[0].replace('/url?q=', '')
+             for link in link_elements
+             if '/url?q=' in link.get('href') and
+             'accounts.google.com' not in link.get('href') and
+             'support.google.com' not in link.get('href')}
     text = soup.get_text(separator='\n').split('All results\nAll results\nVerbatim\n')[1].split('Next >')[0]
 
     return text, list(links)
@@ -32,10 +37,11 @@ def gpt3_call(prompt: str, tokens: int, temperature: int = 1, stop=None):
 
     return response["choices"][0]["text"].replace('\n', '  \n')
 
+def markdown_litteral(string: str):
+    return string.replace('$','\$')
 
 def num_of_tokens(prompt: str):
-    lenght = len(prompt)
-    return int(lenght / 3)
+    return len(tokenizer(prompt)['input_ids'])
 
 
 st.set_page_config(page_title='Quest🔍')
@@ -136,7 +142,7 @@ with search:
         if i == 0: continue
         st.markdown('---')
         st.markdown(f'# {user_queries[i]}')
-        st.write(google_findings[i])
+        st.markdown(markdown_litteral(google_findings[i]))
         if len(links[i]) > 0:
             st.markdown('---')
             st.write('Sources:')
@@ -162,7 +168,7 @@ with response:
         if text[:4] == 'User':
             text = '👤' + text
         else:
-            text = '🖥️' + text
+            text = '🖥️' + markdown_litteral(text)
         st.write(text)
         st.markdown('---')
 
