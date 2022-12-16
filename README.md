@@ -9,7 +9,7 @@
 
 Install [python 3.10](https://www.python.org/downloads/release/python-3100/)
 
-Download the [install.bat](install.bat) file and put it where you want the app to be installed.
+Download the [install.bat](https://raw.githubusercontent.com/farrael004/Quest/main/install.bat) file and put it where you want the app to be installed.
 
 Double click the `install.bat` file.
 
