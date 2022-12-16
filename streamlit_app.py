@@ -46,7 +46,8 @@ st.markdown('---')
 # Setting how factual/creative the model will be. This can be tunned.
 assistant_settings = st.sidebar.selectbox('Assistant settings',
                                           ['Strictly Factual', 'Factual', 'Neutral', 'Creative', 'Very Creative'],
-                                          help='Determines how close to the facts already presented the Assistent will be.')
+                                          help='Determines how close to the facts already presented the Assistent will be.',
+                                          index=2)
 
 match assistant_settings:
     case 'Strictly Factual':
