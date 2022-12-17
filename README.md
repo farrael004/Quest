@@ -9,7 +9,7 @@
 
 Install [python 3.10](https://www.python.org/downloads/release/python-3100/)
 
-Download the [install.bat](https://github.com/farrael004/Quest/blob/main/install.bat) (Windows) or [install.sh](https://github.com/farrael004/Quest/blob/main/install.sh) (macOS/Linux) file by right clicking the link and selecting 'Save link As...'.
+Download the [install.bat](https://github.com/farrael004/Quest/blob/main/install.bat) (Windows) or [install.sh](https://github.com/farrael004/Quest/blob/main/install.sh) (macOS/Linux) file by right clicking the ```Raw``` button and 'Save link As...'.
 
 ![Installing1](tutorial/Installing1.png)
 
