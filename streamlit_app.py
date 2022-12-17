@@ -1,53 +1,91 @@
+import pandas as pd
 import streamlit as st
 from streamlit_lottie import st_lottie
-from urllib.error import HTTPError
+import pickle
+import threading
 import openai
 import requests
 import bs4
 import tiktoken
+from openai.embeddings_utils import get_embedding, cosine_similarity
 
 tokenizer = tiktoken.get_encoding("gpt2")
 
-@st.cache(suppress_st_warning=True)
-def google_search(search: str):
-    res = requests.get('https://google.com/search?q=' + search)
-    
-    # Raise if a HTTPError occured
+
+def google_search(search: str, search_depth: int):
     try:
-        res.raise_for_status()
-    except HTTPError as err:
-        if err.code == 429: # Client Error: Too Many Requests for url
-            st.warning("😵 Your IP is being rate limited by Google. If you are using a VPN try disabling it. Alternatively, you can try searching again another day.😢")
-            raise err
-        else:
-            raise err
+        res = requests.get('https://google.com/search?q=' + search)
+        res.raise_for_status() # Raise if a HTTPError occured
+    except:
+        st.warning("There was a problem with your internet.😵  \nIf you got HTTPError: 429, that means your IP is being rate limited by Google. If you are using a VPN try disabling it. Alternatively, you can try searching again another day.😢")
+        raise
 
     soup = bs4.BeautifulSoup(res.text, 'html.parser')
 
     link_elements = soup.select('a')
-    links = {link.get('href').split('&sa=U&ved=')[0].replace('/url?q=', '')
+    links = [link.get('href').split('&sa=U&ved=')[0].replace('/url?q=', '')
              for link in link_elements
              if '/url?q=' in link.get('href') and
              'accounts.google.com' not in link.get('href') and
-             'support.google.com' not in link.get('href')}
-    text = soup.get_text(separator='\n')
+             'support.google.com' not in link.get('href')]
+    links = list(set(links)) # Remove duplicates while mainaining the same order
+    google_text = soup.get_text(separator='\n')
     
+    links_attempted = -1
+    links_explored = 0
+    google_results = pd.DataFrame(columns=['text', 'link', 'query'])
+    
+    link_history = st.session_state['google_history']['link'].unique().tolist()
+    while links_explored < search_depth or links_attempted == len(links):
+        links_attempted += 1
+        if links[links_attempted] in link_history: continue
+        # If this link does not work, go to the next one
+        try:
+            res = requests.get(links[links_attempted])
+            res.raise_for_status()
+        except:
+            continue
+        
+        soup = bs4.BeautifulSoup(res.text, 'html.parser')
+        _link_text = list(set(soup.get_text(separator='\n'))) # Separate all text by lines and remove duplicates
+        _useful_text = [s for s in _link_text if len(s) > 30] # Get only strings above 30 characters
+        _links = [links[links_attempted] for i in range(len(_useful_text))]
+        _query = [search for i in range(len(_useful_text))]
+        print('-----------------------')
+        print(soup.get_text(separator='\n'))
+        print('-----------------------')
+        _link_results = pd.DataFrame({'text': _useful_text, 'link': _links, 'query': _query})
+        google_results = pd.concat([google_results, _link_results])
+        links_explored += 1
+    
+    google_results = google_results.drop_duplicates()
+    #google_results['ada_search'] = google_results['text'].apply(lambda x: get_embedding(x, engine='text-embedding-ada-002'))
+    
+    return google_results
+        
     
     # Here I'm predicting where the useful information in the string is. Since some have reported different formatting, it is in a try block.
-    try:
-        text = text.split('All results\nAll results\nVerbatim\n')[1]
-    except:
-        pass
-    try:
-        text = text.split('Next >')[0]
-    except:
-        pass
+    #try:
+    #    google_text = google_text.split('All results\nAll results\nVerbatim\n')[1]
+    #except:
+    #    pass
+    #try:
+    #    google_text = google_text.split('Next >')[0]
+    #except:
+    #    pass
 
-    return text, list(links)
+    #return google_text, links
 
 
 @st.cache
-def gpt3_call(prompt: str, tokens: int, temperature: int = 1, stop=None):
+def find_top_similar_results(df: pd.DataFrame, query: str, n: int):
+    embedding = get_embedding(query, engine="text-embedding-ada-002")
+    df1 = df.copy()
+    df1["similarities"] = df1["ada_search"].apply(lambda x: cosine_similarity(x, embedding))
+    return df1.sort_values("similarities", ascending=False).head(n)
+
+@st.cache
+def gpt3_call(prompt: str, tokens: int, temperature: int=1, stop=None):
     response = openai.Completion.create(
         engine="text-davinci-003",
         prompt=prompt,
@@ -74,6 +112,25 @@ def markdown_litteral(string: str):
 
 def num_of_tokens(prompt: str):
     return len(tokenizer.encode(prompt))
+
+def load_google_history():
+    # Try to find the search_history, if can't find it, create a new search_history
+    try:
+        with open('search_history.pickle', 'rb') as f:
+            return pickle.load(f)
+    except:
+        data = pd.DataFrame(columns=['text', 'link', 'query'])
+        with open('search_history.pickle', 'wb') as f:
+            pickle.dump(data, f)
+        return data
+
+def save_google_history(data):
+    with open('search_history.pickle', 'wb') as f:
+        pickle.dump(data, f)
+        
+def save_google_history_in_thread(data):
+    thread = threading.Thread(target=save_google_history, args=(data))
+    thread.start()
 
 st.set_page_config(page_title='Quest🔍')
 st.title("Quest🔍")
@@ -164,15 +221,18 @@ chat = st.container()
 search = st.expander('Google Search', expanded=True)
 
 # Defining google search history
+if 'google_history' not in st.session_state:
+    st.session_state['google_history'] = load_google_history()
+
 if 'google_findings' not in st.session_state:
-    st.session_state['google_findings'] = ['']
-if 'google_links' not in st.session_state:
-    st.session_state['google_links'] = [[]]
+    st.session_state['google_findings'] = []
+if 'links' not in st.session_state:
+    st.session_state['links'] = []
 if 'user_queries' not in st.session_state:
-    st.session_state['user_queries'] = ['']
+    st.session_state['user_queries'] = []
 
 google_findings = st.session_state['google_findings']
-links = st.session_state['google_links']
+links = st.session_state['links']
 user_queries = st.session_state['user_queries']
 
 # Google search section
@@ -180,26 +240,33 @@ with search:
     with st.form('Google'):
         user_query_text = st.text_input(label='')
         google_submitted = st.form_submit_button("Submit")
+        
+        query_history = st.session_state['google_history']['query'].unique().tolist()
+        if google_submitted and user_query_text != '' and user_query_text not in query_history:
+            search_results = google_search(user_query_text, 3)
+            st.session_state['google_history'] = pd.concat([st.session_state['google_history'], search_results]).drop_duplicates()
+            save_google_history(st.session_state['google_history'])
+            #similar_results = find_top_similar_results(search_results, user_query_text, 6)
+            
+            #google_findings = st.session_state['google_findings'].append(similar_results['text'].to_list())
+            #links = st.session_state['links'].append(similar_results['link'].to_list())
+            #user_queries = st.session_state['user_queries'].append(user_query_text)
+            
+        if google_submitted and user_query_text in query_history:
+            st.warning("This query is cached in your history already")
+            
+    #if len(google_findings) > 0:
+        # Iterate backwards so older searches are at the bottom
+        #for i in range(len(google_findings) - 1, -1, -1):
+            #st.markdown('---')
+            #st.markdown(f'# {user_queries[i]}')
+            #for finding in google_findings[i]:
+            #    st.markdown(markdown_litteral(finding))
 
-        if google_submitted:
-            st.session_state['user_queries'].append(user_query_text)
-            search_results, search_links = google_search(user_query_text)
-            st.session_state['google_links'].append(search_links)
-            prompt = "The user google searched the following:\n" + user_query_text + "\nThe results are:\n" + search_results + "\nWrite all of the relevant information to the user's search based on the results:"
-            tokens = num_of_tokens(prompt)
-            st.session_state['google_findings'].append(gpt3_call(prompt, 4000 - tokens, temperature=0))
-
-    # Iterate backwards so older searches are at the bottom
-    for i in range(len(google_findings) - 1, -1, -1):
-        if i == 0: continue
-        st.markdown('---')
-        st.markdown(f'# {user_queries[i]}')
-        st.markdown(markdown_litteral(google_findings[i]))
-        if len(links[i]) > 0:
-            st.markdown('---')
-            st.write('Sources:')
-            for link in links[i]:
-                st.write(link)
+            #st.markdown('---')
+            #st.write('Sources:')
+            #for link in links[i]:
+            #    st.write(link)
 
 # Section where user inputs directly to GPT
 with chat:
