@@ -4,9 +4,9 @@ from urllib.error import HTTPError
 import openai
 import requests
 import bs4
-from transformers import GPT2TokenizerFast
+import tiktoken
 
-tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+tokenizer = tiktoken.get_encoding("gpt2")
 
 @st.cache(suppress_st_warning=True)
 def google_search(search: str):
@@ -73,7 +73,7 @@ def markdown_litteral(string: str):
     return string.replace('$','\$')
 
 def num_of_tokens(prompt: str):
-    return len(tokenizer(prompt)['input_ids'])
+    return len(tokenizer.encode(prompt))
 
 st.set_page_config(page_title='Quest🔍')
 st.title("Quest🔍")
