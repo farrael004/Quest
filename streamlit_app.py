@@ -151,7 +151,6 @@ if 'api_key' not in st.session_state:
             f.close()
             
         if api_submitted:
-            st.warning("Hi")
             st.session_state['api_key'] = api_key
             st.experimental_rerun()
         
