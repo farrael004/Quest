@@ -226,7 +226,7 @@ with st.sidebar:
 # Google search section
 with search:
     with st.form('Google'):
-        user_query_text = st.text_input(label='',value=initial_search)
+        user_query_text = st.text_input(label='Google search',value=initial_search, label_visibility="hidden")
         google_submitted = st.form_submit_button("Submit")
         
         query_history = st.session_state['google_history']['query'].unique().tolist()
