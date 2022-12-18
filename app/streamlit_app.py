@@ -63,20 +63,6 @@ def google_search(search: str, search_depth: int):
         largest_results['ada_search'] = largest_results['text'].apply(lambda x: get_embedding(x, engine='text-embedding-ada-002'))
 
     return largest_results
-        
-    
-    # Here I'm predicting where the useful information in the string is. Since some have reported different formatting, it is in a try block.
-    #google_text = soup.get_text(separator='\n')
-    #try:
-    #    google_text = google_text.split('All results\nAll results\nVerbatim\n')[1]
-    #except:
-    #    pass
-    #try:
-    #    google_text = google_text.split('Next >')[0]
-    #except:
-    #    pass
-
-    #return google_text, links
 
 
 @st.cache
@@ -120,20 +106,12 @@ def num_of_tokens(prompt: str):
 
 def update_history(results):
     history = st.session_state['google_history']
-    # Work around to a bug that doesn't like concatenating these two dataframes
-    history.to_parquet('temp_history.parquet')
-    history = pd.read_parquet('temp_history.parquet')
-    os.remove('temp_history.parquet')
-    results.to_parquet('temp_results.parquet')
-    results = pd.read_parquet('temp_results.parquet')
-    os.remove('temp_results.parquet')
 
     if history.empty:
         history = results
     else:
         history = pd.concat([history, results]).drop_duplicates(subset=['text'])
-        
-    #history['ada_search'] = history['ada_search'].apply(list)
+
     st.session_state['google_history'] = history
 
 def load_google_history():

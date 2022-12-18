@@ -25,11 +25,11 @@ If when you double-click ```install.bat``` it gives you an error. Open it using 
 
 ## Run locally
 
-To quickly open the app after installation, double-click the `start` file (.bat for Windows and .sh for macOS/Linux). A command shell will open and two links will be displayed. Navigate to any of the two links in your browser.
+To quickly open the app after installation, double-click the `start` file located in the app folder (.bat for Windows and .sh for macOS/Linux). A command shell will open and two links will be displayed. Navigate to any of the two links in your browser.
 
 ## Updating
 
-You can update the app to the latest version by double-clicking the `update` file (.bat for Windows and .sh for macOS/Linux).
+You can update the app to the latest version by double-clicking the `update` file located in the app folder (.bat for Windows and .sh for macOS/Linux).
 
 ## Usage
 
