@@ -1,7 +1,7 @@
 # Quest
  This is a web app that integrates GPT-3 with google searches.
 
- Currently the search does not go into links and is restricted to the google page.
+ This analyses the first few results from a google search and stores snippets of text so the Assistant can remember facts. Then you can ask the Assistant about those facts and it will be able to retrive the relevant information gathered previously.
 
  Anyone willing to help build this tool is welcome to send merge requests.
 
