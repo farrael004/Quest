@@ -55,3 +55,11 @@ Using the most relevant search results and most relevant chat history, the Assis
 ### Assistant settings
 
 The Assistant settings serves to determine how the Assistant will behave. If you set it to `Strictly Factual`, it will try to not say any facts beyond the Google searches. `Very Creative` will still use the searches, but allow itself to generate creative responses while being less concerned with factuality.
+
+## Create your own Assistant
+
+There are 5 default settings that can be chosen to customize how factual or creative the Assistant is. However, you can create your own settings to open for many more possibilities. To do this, navigate to the `conversation_settings` folder and open the `_create_setting.py` file.
+
+![Tutorial4](tutorial/Tutorial4.png)
+
+Inside, you can create the custom settings and give it a name. Then double-click `_create_setting_file` (.bat for Windows and .sh for macOS/Linux).
