@@ -6,6 +6,8 @@ import threading
 import openai
 import requests
 import bs4
+import os
+import json
 import tiktoken
 from openai.embeddings_utils import get_embedding, cosine_similarity
 
@@ -79,13 +81,15 @@ def google_search(search: str, search_depth: int):
 
 @st.cache
 def find_top_similar_results(df: pd.DataFrame, query: str, n: int):
+    if len(df.index) < n:
+        n = len(df.index)
     embedding = get_embedding(query, engine="text-embedding-ada-002")
     df1 = df.copy()
     df1["similarities"] = df1["ada_search"].apply(lambda x: cosine_similarity(x, embedding))
     best_results = df1.sort_values("similarities", ascending=False).head(n)
     return best_results.drop(['similarities', 'ada_search'], axis=1).drop_duplicates(subset=['text'])
 
-@st.cache
+
 def gpt3_call(prompt: str, tokens: int, temperature: int=1, stop=None):
     response = openai.Completion.create(
         engine="text-davinci-003",
@@ -115,10 +119,21 @@ def num_of_tokens(prompt: str):
     return len(tokenizer.encode(prompt))
 
 def update_history(results):
-    history = st.session_state['google_history']['ada_search'].apply(tuple)
-    results['ada_search'] = results['ada_search'].apply(tuple)
-    history = pd.concat([history, results]).drop_duplicates()
-    history['ada_search'] = history['ada_search'].apply(list)
+    history = st.session_state['google_history']
+    # Work around to a bug that doesn't like concatenating these two dataframes
+    history.to_parquet('temp_history.parquet')
+    history = pd.read_parquet('temp_history.parquet')
+    os.remove('temp_history.parquet')
+    results.to_parquet('temp_results.parquet')
+    results = pd.read_parquet('temp_results.parquet')
+    os.remove('temp_results.parquet')
+
+    if history.empty:
+        history = results
+    else:
+        history = pd.concat([history, results]).drop_duplicates(subset=['text'])
+        
+    #history['ada_search'] = history['ada_search'].apply(list)
     st.session_state['google_history'] = history
 
 def load_google_history():
@@ -139,58 +154,37 @@ def save_google_history(data):
 def save_google_history_in_thread(data):
     thread = threading.Thread(target=save_google_history, args=(data))
     thread.start()
+    
+def add_conversation_entry(new_entry):
+    text_length = len(new_entry)
+    data = pd.DataFrame({'text': new_entry, 'text_length': text_length}, index=[0])
+    data['ada_search'] = data['text'].apply(lambda x: get_embedding(x, engine='text-embedding-ada-002'))
+    st.session_state['conversation'] = pd.concat([st.session_state['conversation'], data], ignore_index=True)
 
 st.set_page_config(page_title='Quest🔍')
 st.title("Quest🔍")
 st.markdown("By [Rafael Moraes](https://github.com/farrael004)")
 st.markdown('---')
 
-# Setting how factual/creative the model will be. This can be tunned.
-assistant_settings = st.sidebar.selectbox('Assistant settings',
-                                          ['Strictly Factual', 'Factual', 'Neutral', 'Creative', 'Very Creative'],
-                                          help='Determines how close to the facts already presented the Assistent will be.',
-                                          index=2)
+# Load Assistant settings
+script_path = os.path.abspath(__file__).replace('streamlit_app.py', '')
+folder_path = os.path.join(script_path, 'conversation_settings')
+file_names = os.listdir(folder_path)
+all_settings = []
+for file_name in file_names:
+    if file_name.endswith('.json'):
+        with open(os.path.join(folder_path, file_name)) as f:
+            data = json.load(f)
+            all_settings.append(data)
 
-match assistant_settings:
-    case 'Strictly Factual':
-        warn_assistant = "\nWARNING: If the user asks for information that is not in their google search, try to answer the question as factualy as possible and warn the user about this absence. DO NOT provide any hyperlinks.\n"
-        starting_conversation = ['User: Who are you?',
-                                 'Assistant: Hello, my name is Assistant. How can I help you?',
-                                 'User: How much is the toy car from my search?',
-                                 "Assistant: Unfortunately your Google search did not specify prices for gifts, but based on your search, I do have some information about popular gifts for kids in 2022.",
-                                 "User: Can you show me how to loop between 0 and 9 in python?",
-                                 "Assistant: Sure. Here's how you can loop between 0 and 9 in python:\n```python\nfor i in range(10):\n    print(i)\n```"]
+settings = {setting['setting_name']: (setting['warn_assistant'], pd.DataFrame(setting['starting_conversation'])) for setting in all_settings}
 
-    case 'Factual':
-        warn_assistant = "\nWARNING: If the user asks for information that is not in their google search, try to answer the question but warn about potential lack of precise or up to date information. DO NOT provide any hyperlinks.\n"
-        starting_conversation = ['User: Who are you?',
-                                 'Assistant: Hello, my name is Assistant. How can I help you?',
-                                 'User: How much is the toy car from my search?',
-                                 "Assistant: Unfortunately your Google search did not specify prices for gifts, but I do have some information about popular gifts for kids in 2022.",
-                                 "User: Can you show me how to loop between 0 and 9 in python?",
-                                 "Assistant: Sure. Here's how you can loop between 0 and 9 in python:\n```python\nfor i in range(10):\n    print(i)\n```"]
-    case 'Neutral':
-        warn_assistant = "\nATTENTION: If the user asks for information that is not in their google search, try to answer the question to the best of your knowledge but warn about potential lack of precise or up to date information.\n"
-        starting_conversation = ['User: Who are you?',
-                                 'Assistant: Hello, my name is Assistant. How can I help you?',
-                                 'User: How much is the toy car from my search?',
-                                 "Assistant: Unfortunately your Google search did not specify prices for gifts, but I do have some information about popular gifts for kids in 2022.",
-                                 "User: Can you show me how to loop between 0 and 9 in python?",
-                                 "Assistant: Sure. Here's how you can loop between 0 and 9 in python:\n```python\nfor i in range(10):\n    print(i)\n```"]
-    case 'Creative':
-        warn_assistant = "\nATTENTION: If the user asks for information that is not in their google search, try to answer the question in a way that seems correct but warn about potential lack of precise or up to date information.\n"
-        starting_conversation = ['User: Who are you?',
-                                 'Assistant: Hello, my name is Assistant. How can I help you?',
-                                 'User: How much is the toy car from my search?',
-                                 "Assistant: Unfortunately your Google search did not specify prices for gifts, but I do have some information about popular gifts for kids in 2022.",
-                                 "User: Can you show me how to loop between 0 and 9 in python?",
-                                 "Assistant: Sure. Here's how you can loop between 0 and 9 in python:\n```python\nfor i in range(10):\n    print(i)\n```"]
-    case 'Very Creative':
-        warn_assistant = ''
-        starting_conversation = ['User: Who are you?',
-                                 'Assistant: Hello, my name is Assistant. How can I help you?',
-                                 "User: Can you show me how to loop between 0 and 9 in python?",
-                                 "Assistant: Sure. Here's how you can loop between 0 and 9 in python:\n```python\nfor i in range(10):\n    print(i)\n```"]
+chosen_settings = st.sidebar.selectbox('Assistant settings',
+                                          settings.keys(),
+                                          help='Determines how the assistant will behave (Custom settings can be created in the conversation_settings folder).',
+                                          index=0)
+
+warn_assistant, starting_conversation = settings[chosen_settings]
 
 with st.sidebar:
     lottie_image1 = load_lottie_url('https://assets10.lottiefiles.com/packages/lf20_ofa3xwo7.json')
@@ -288,14 +282,13 @@ with chat:
         chat_submitted = st.form_submit_button("Submit")
 
 # Initialize the conversation if it was not initialized before or if the assistant settings changed
-if 'conversation' not in st.session_state or starting_conversation != st.session_state['conversation'][:len(starting_conversation)]:
-    data = pd.DataFrame(columns=['entry', 'text_length', 'ada_search'])
+if 'conversation' not in st.session_state or starting_conversation['text'].to_list() != st.session_state['conversation']['text'].iloc[:len(starting_conversation.index)].to_list():
     st.session_state['conversation'] = starting_conversation
 
 with response:
     # Show conversation so far
     chat_so_far = ''
-    for i, text in enumerate(st.session_state['conversation']):
+    for i, text in enumerate(st.session_state['conversation']['text']):
         chat_so_far += text + '\n'
         if i < len(starting_conversation): continue
         if text[:4] == 'User':
@@ -306,24 +299,30 @@ with response:
         st.markdown('---')
 
     # Submits new prompt
-    if chat_submitted:
+    if chat_submitted and user_chat_text != '':
         st.write('👤User: ' + user_chat_text)
-        st.session_state['conversation'].append('User: ' + user_chat_text)
+        add_conversation_entry('User: ' + user_chat_text)
         
         similar_google_results = find_top_similar_results(st.session_state['google_history'], user_chat_text, 5)
         similar_conversation = find_top_similar_results(st.session_state['conversation'], user_chat_text, 4)
 
         prompt = 'You are a friendly and helpful AI assistant. You have access to the internet if the user makes a google search.\n'
-        if google_findings[0] != '':
-            prompt += "The user asked you to google search\n" + "Your findings are:" + \
-                      '\n'.join(google_findings) + "\n"
-        else:
+        if similar_google_results.empty:
             prompt += "The user did not make a google search to provide more information.\n"
-        prompt += 'This is the conversation so far:\n' + chat_so_far + 'User: ' + user_chat_text + warn_assistant + '\nAssistant:'
+        else:
+            prompt += "The user asked you to google search different topics.\nYour findings are:" + \
+                    '\n'.join(similar_google_results['text'].to_list()) + "\n"
+            
+        prompt += 'These are the relevant entries from the conversation so far (in order of importance):\n' + \
+            '\n'.join(similar_conversation['text'].to_list()) + 'User: ' + user_chat_text + warn_assistant + '\nAssistant:'
 
         tokens = num_of_tokens(prompt)
         answer = gpt3_call(prompt, tokens=4000 - tokens, stop='User:')
-        st.session_state['conversation'].append('Assistant: ' + answer)
-        print(prompt + answer)
+        add_conversation_entry('Assistant: ' + answer)
         st.markdown('---')
         st.write('🖥️Assistant: ' + answer)
+        with st.expander("Prompt used:"):
+            st.write(markdown_litteral(prompt).replace('\n','  \n  \n'))
+        with st.expander("What sources did I use to make this answer?"):
+            for row in similar_google_results.iterrows():
+                st.write(markdown_litteral(row[1]['text']) + f" [Source]({row[1]['link']})") 

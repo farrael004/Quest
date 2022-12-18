@@ -1,10 +1,7 @@
 # To create a new setting, simply change setting_name, warn_assistant, and
 # starting_conversation. Then run this script.
 
-import openai
-
-
-setting_name = 'Strictly Factual'
+setting_name = 'Template'
 warn_assistant = "\nWARNING: If the user asks for information that is not in their google search, try to answer the question as factualy as possible and warn the user about this absence. DO NOT provide any hyperlinks.\n"
 starting_conversation = ['User: Who are you?',
                          'Assistant: Hello, my name is Assistant. How can I help you?',
@@ -14,9 +11,33 @@ starting_conversation = ['User: Who are you?',
                          "Assistant: Sure. Here's how you can loop between 0 and 9 in python:\n```python\nfor i in range(10):\n    print(i)\n```"]
 
 import pandas as pd
-
 from openai.embeddings_utils import get_embedding, cosine_similarity
+import openai
+import json
+import os
 
-data = pd.DataFrame(columns=['entry', 'text_length', 'ada_search'])
+# Navigate to the parent directory
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+with open(os.path.join(parent_dir, 'api_key.txt'), 'r') as f:
+    openai.api_key = f.read()
 
+text_length = [len(x) for x in starting_conversation]
+data = pd.DataFrame({'text': starting_conversation, 'text_length': text_length})
+print('Creating embeddings...')
 data['ada_search'] = data['text'].apply(lambda x: get_embedding(x, engine='text-embedding-ada-002'))
+
+dictionary = {
+    "setting_name": setting_name,
+    "warn_assistant": warn_assistant,
+    "starting_conversation": data.to_dict()
+}
+
+# Serializing json
+json_object = json.dumps(dictionary, indent=4)
+ 
+# Writing to file
+file_name = setting_name.replace(' ', '_') + ".json"
+with open(file_name, "w") as outfile:
+    outfile.write(json_object)
+    
+print('Setting successfully created. You may close this window')

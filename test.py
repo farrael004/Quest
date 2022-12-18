@@ -3,6 +3,10 @@ import pandas as pd
 import openai
 from openai.embeddings_utils import get_embedding, cosine_similarity
 
+with open('api_key.txt') as api_key:
+    openai.api_key = api_key.read()
+
+
 def load_google_history():
     # Try to find the search_history, if can't find it, create a new search_history
     try:
