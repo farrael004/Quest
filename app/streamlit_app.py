@@ -279,20 +279,21 @@ with response:
     # Submits new prompt
     if chat_submitted and user_chat_text != '':
         st.write('👤User: ' + user_chat_text)
-        add_conversation_entry('User: ' + user_chat_text)
-        
+
         similar_google_results = find_top_similar_results(st.session_state['google_history'], user_chat_text, 5)
         similar_conversation = find_top_similar_results(st.session_state['conversation'], user_chat_text, 4)
-
-        prompt = 'You are a friendly and helpful AI assistant. You have access to the internet if the user makes a google search.\n'
+        
+        add_conversation_entry('User: ' + user_chat_text)
+        
+        prompt = "You are a friendly and helpful AI assistant. You don't have access to the internet beyond the google searches that the user provides.\n"
         if similar_google_results.empty:
             prompt += "The user did not make a google search to provide more information.\n"
         else:
-            prompt += "The user asked you to google search different topics.\nYour findings are:" + \
+            prompt += "The user provided you with google searches.\nYour findings are:" + \
                     '\n'.join(similar_google_results['text'].to_list()) + "\n"
             
         prompt += 'These are the relevant entries from the conversation so far (in order of importance):\n' + \
-            '\n'.join(similar_conversation['text'].to_list()) + 'User: ' + user_chat_text + warn_assistant + '\nAssistant:'
+            '\n'.join(similar_conversation['text'].to_list()) + '\nThis is the last message by the user:\nUser: ' + user_chat_text + warn_assistant + '\nAssistant:'
 
         tokens = num_of_tokens(prompt)
         answer = gpt3_call(prompt, tokens=4000 - tokens, stop='User:')
