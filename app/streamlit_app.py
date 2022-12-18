@@ -24,14 +24,14 @@ def google_search(search: str, search_depth: int):
     
     with st.spinner(text="Searching the internet..."):
         soup = bs4.BeautifulSoup(res.text, 'html.parser')
-
+        
         link_elements = soup.select('a')
         links = [link.get('href').split('&sa=U&ved=')[0].replace('/url?q=', '')
                 for link in link_elements
                 if '/url?q=' in link.get('href') and
                 'accounts.google.com' not in link.get('href') and
                 'support.google.com' not in link.get('href')]
-        links = list(set(links)) # Remove duplicates while mainaining the same order
+        links = list(set(links)) # Remove duplicates while maintaining the same order
         
         links_attempted = -1
         links_explored = 0
@@ -39,6 +39,9 @@ def google_search(search: str, search_depth: int):
         link_history = st.session_state['google_history']['link'].unique().tolist()
         while links_explored < search_depth or links_attempted == len(links):
             links_attempted += 1
+            if links == []:
+                st.warning("No results found. 😢")
+                st.stop() 
             if links[links_attempted] in link_history: continue
             # If this link does not work, go to the next one
             try:
@@ -46,7 +49,7 @@ def google_search(search: str, search_depth: int):
                 res.raise_for_status()
             except:
                 continue
-            
+
             soup = bs4.BeautifulSoup(res.text, 'html.parser')
             _link_text = list(set(soup.get_text(separator='\n').splitlines())) # Separate all text by lines and remove duplicates
             _useful_text = [s for s in _link_text if len(s) > 30] # Get only strings above 30 characters
@@ -296,7 +299,8 @@ with response:
             '\n'.join(similar_conversation['text'].to_list()) + '\nThis is the last message by the user:\nUser: ' + user_chat_text + warn_assistant + '\nAssistant:'
 
         tokens = num_of_tokens(prompt)
-        answer = gpt3_call(prompt, tokens=4000 - tokens, stop='User:')
+        with st.spinner('Generating response...'):
+            answer = gpt3_call(prompt, tokens=4000 - tokens, stop='User:')
         add_conversation_entry('Assistant: ' + answer)
         st.markdown('---')
         st.write('🖥️Assistant: ' + answer)
