@@ -5,35 +5,15 @@
 
  Anyone willing to help build this tool is welcome to send merge requests.
 
-## Setup
+## How can I try this out?
 
-Install [python 3.10](https://www.python.org/downloads/release/python-3100/)
+First, you will need an API key from OpenAI. [Click here to get your API key](https://beta.openai.com/account/api-keys). Make sure to store this key in a safe place.
 
-Download the [install.bat](https://github.com/farrael004/Quest/blob/main/install.bat) (Windows) or [install.sh](https://github.com/farrael004/Quest/blob/main/install.sh) (macOS/Linux) file by right clicking the ```Raw``` button and 'Save link As...'.
-
-![Installing1](tutorial/Installing1.png)
-
-Put the file where you want the app to be installed.
-
-Double click the `install` file.
-
-## Problems installing?
-
-If when you double-click ```install.bat``` it gives you an error. Open it using notepad and edit the following lines to ```py``` instead of ```python```. Then double-click the ```install.bat``` file again.
-
-![Troubleshoot1](tutorial/Troubleshooting1.png)
-
-## Run locally
-
-To quickly open the app after installation, double-click the `start` file located in the app folder (.bat for Windows and .sh for macOS/Linux). A command shell will open and two links will be displayed. Navigate to any of the two links in your browser.
-
-## Updating
-
-You can update the app to the latest version by double-clicking the `update` file located in the app folder (.bat for Windows and .sh for macOS/Linux).
+Currently the web app is deployed [here](https://farrael004-quest-streamlit-app-deployment-experimental-76f30t.streamlit.app/).
 
 ## Usage
 
-There are three main sections in this app. The 'Assistant settings', the 'Ask me anything', and the 'Google search'.
+There are three main sections in this app. The 'Assistant settings', the 'Ask the Assistant', and the 'Google search'.
 
 ![Usage1](tutorial/Tutorial1.png)
 
