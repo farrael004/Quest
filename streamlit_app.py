@@ -124,13 +124,14 @@ def load_google_history():
             return pickle.load(f)
     except:
         data = pd.DataFrame(columns=['text', 'link', 'query', 'text_length', 'ada_search'])
-        with open('search_history.pickle', 'wb') as f:
-            pickle.dump(data, f)
+        #with open('search_history.pickle', 'wb') as f:
+            #pickle.dump(data, f)
         return data
 
 def save_google_history(data):
-    with open('search_history.pickle', 'wb') as f:
-        pickle.dump(data, f)
+    #with open('search_history.pickle', 'wb') as f:
+        #pickle.dump(data, f)
+    pass
         
 def save_google_history_in_thread(data):
     thread = threading.Thread(target=save_google_history, args=(data))
@@ -180,8 +181,8 @@ if 'api_key' not in st.session_state:
         with st.form('API Key'):
             api_key = st.text_input(label='Insert your API key here')
             api_submitted = st.form_submit_button("Submit")
-            api_checkbox = st.checkbox('Save my key')
-            st.markdown("NOTE: By saving your key, it will be stored in a local file without encryption.")
+            api_checkbox = st.checkbox('Remember my key *(Not yet implemented in the deployed version)*', disabled=True)
+            #st.markdown("NOTE: By saving your key, it will be stored in a local file without encryption.")
 
         st.markdown("[Find your API key here](https://beta.openai.com/account/api-keys)")
         
@@ -259,7 +260,7 @@ with search:
 # Section where user inputs directly to GPT
 with chat:
     with st.form('Chat'):
-        user_chat_text = st.text_input(label="Ask me anything")
+        user_chat_text = st.text_input(label="Ask the Assistant")
         chat_submitted = st.form_submit_button("Submit")
 
 # Initialize the conversation if it was not initialized before or if the assistant settings changed
@@ -286,8 +287,6 @@ with response:
         similar_google_results = find_top_similar_results(st.session_state['google_history'], user_chat_text, 5)
         similar_conversation = find_top_similar_results(st.session_state['conversation'], user_chat_text, 4)
         
-        add_conversation_entry('User: ' + user_chat_text)
-        
         prompt = "You are a friendly and helpful AI assistant. You don't have access to the internet beyond the google searches that the user provides.\n"
         if similar_google_results.empty:
             prompt += "The user did not make a google search to provide more information.\n"
@@ -296,11 +295,12 @@ with response:
                     '\n'.join(similar_google_results['text'].to_list()) + "\n"
             
         prompt += 'These are the relevant entries from the conversation so far (in order of importance):\n' + \
-            '\n'.join(similar_conversation['text'].to_list()) + '\nThis is the last message by the user:\nUser: ' + user_chat_text + warn_assistant + '\nAssistant:'
+            '\n'.join(similar_conversation['text'].to_list()) + '\nThese are the last two messages:\nAssistant: ' + st.session_state['conversation']['text'].iloc[-1] + '\nUser: ' + user_chat_text + warn_assistant + '\nAssistant:'
 
         tokens = num_of_tokens(prompt)
         with st.spinner('Generating response...'):
             answer = gpt3_call(prompt, tokens=4000 - tokens, stop='User:')
+        add_conversation_entry('User: ' + user_chat_text)
         add_conversation_entry('Assistant: ' + answer)
         st.markdown('---')
         st.write('🖥️Assistant: ' + answer)
@@ -309,3 +309,4 @@ with response:
                 st.write(markdown_litteral(row[1]['text']) + f" [Source]({row[1]['link']})") 
         with st.expander("Prompt used:"):
             st.write(markdown_litteral(prompt).replace('\n','  \n  \n'))
+            st.markdown(':green[Tokens used: ]' + f':green[{str(num_of_tokens(prompt))}]')
