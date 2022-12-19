@@ -68,7 +68,6 @@ def google_search(search: str, search_depth: int):
     return largest_results
 
 
-@st.cache
 def find_top_similar_results(df: pd.DataFrame, query: str, n: int):
     if len(df.index) < n:
         n = len(df.index)
@@ -303,7 +302,7 @@ with response:
         add_conversation_entry('User: ' + user_chat_text)
         add_conversation_entry('Assistant: ' + answer)
         st.markdown('---')
-        st.write('🖥️Assistant: ' + answer)
+        st.write('🖥️Assistant: ' + markdown_litteral(answer))
         with st.expander("What sources did I use to make this answer?"):
             for row in similar_google_results.iterrows():
                 st.write(markdown_litteral(row[1]['text']) + f" [Source]({row[1]['link']})") 
