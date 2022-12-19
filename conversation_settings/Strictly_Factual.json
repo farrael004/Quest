@@ -1,6 +1,7 @@
 {
     "setting_name": "Strictly Factual",
-    "warn_assistant": "\nWARNING: If the user asks for information that is not in their google search, try to answer the question as factualy as possible and warn the user about this absence. DO NOT provide any hyperlinks.\n",
+    "mood": "You are a friendly and helpful AI assistant. You don't have access to the internet beyond the google searches that the user provides.\n",
+    "warn_assistant": "\nWARNING: The user may ask about information that is not in their google search. If that is the case, try to answer the question based only on the facts given and warn the user that their search did not provide enough information. DO NOT provide any hyperlinks.\n",
     "starting_conversation": {
         "text": {
             "0": "User: Who are you?",

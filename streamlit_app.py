@@ -13,6 +13,26 @@ from openai.embeddings_utils import get_embedding, cosine_similarity
 
 tokenizer = tiktoken.get_encoding("gpt2")
 
+def api_key_form():
+    with st.form('API Key'):
+        api_key = st.text_input(label='Insert your API key here')
+        api_submitted = st.form_submit_button("Submit")
+        api_checkbox = st.checkbox('Remember my key *(Not yet implemented in the deployed version)*', disabled=True)
+            #st.markdown("NOTE: By saving your key, it will be stored in a local file without encryption.")
+
+    st.markdown("[Find your API key here](https://beta.openai.com/account/api-keys)")
+    
+    # Currently inaccessible    
+    if api_submitted and api_checkbox:
+        f = open("api_key.txt", "a")
+        f.write(api_key)
+        f.close()  
+    if api_submitted:
+        st.session_state['api_key'] = api_key
+        print(st.session_state['api_key'][-4:])
+        st.experimental_rerun()
+        
+    st.stop()
 
 def google_search(search: str, search_depth: int):
     try:
@@ -63,7 +83,7 @@ def google_search(search: str, search_depth: int):
     largest_results = google_results.nlargest(50, 'text_length')
     largest_results = largest_results.drop_duplicates()
     with st.spinner('Analysing results...'):
-        largest_results['ada_search'] = largest_results['text'].apply(lambda x: get_embedding(x, engine='text-embedding-ada-002'))
+        largest_results['ada_search'] = largest_results['text'].apply(lambda x: create_embedding(x))
 
     return largest_results
 
@@ -71,23 +91,37 @@ def google_search(search: str, search_depth: int):
 def find_top_similar_results(df: pd.DataFrame, query: str, n: int):
     if len(df.index) < n:
         n = len(df.index)
-    embedding = get_embedding(query, engine="text-embedding-ada-002")
+    embedding = create_embedding(query)
+    #embedding = get_embedding(query, engine="text-embedding-ada-002")
     df1 = df.copy()
     df1["similarities"] = df1["ada_search"].apply(lambda x: cosine_similarity(x, embedding))
     best_results = df1.sort_values("similarities", ascending=False).head(n)
     return best_results.drop(['similarities', 'ada_search'], axis=1).drop_duplicates(subset=['text'])
 
+def create_embedding(query):
+    try:
+        return get_embedding(query, engine="text-embedding-ada-002")
+    except:
+        api_error_warning()
+
+def api_error_warning():
+    st.warning("Something went wrong.  \n  \n> An error occured when trying to send your request to OpenAI. There are a few reasons why this could happen:  \n> - This service cannot communicate with OpenAI's API.  \n> - You exceeded your rate limit. Check your usage and limit [here](https://beta.openai.com/account/usage)  \n> - You entered an invalid API key. Try getting a new key [here](https://beta.openai.com/account/api-keys) and refresh this page.", icon='⚠️')
+
 
 def gpt3_call(prompt: str, tokens: int, temperature: int=1, stop=None):
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=prompt,
-        max_tokens=tokens,
-        n=1,
-        stop=stop,
-        temperature=temperature)
+    try:
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            max_tokens=tokens,
+            n=1,
+            stop=stop,
+            temperature=temperature)
 
-    return response["choices"][0]["text"].replace('\n', '  \n')
+        return response["choices"][0]["text"].replace('\n', '  \n')
+    except:
+        api_error_warning()
+        
 
 
 @st.cache
@@ -139,7 +173,7 @@ def save_google_history_in_thread(data):
 def add_conversation_entry(new_entry):
     text_length = len(new_entry)
     data = pd.DataFrame({'text': new_entry, 'text_length': text_length}, index=[0])
-    data['ada_search'] = data['text'].apply(lambda x: get_embedding(x, engine='text-embedding-ada-002'))
+    data['ada_search'] = data['text'].apply(lambda x: create_embedding(x))
     st.session_state['conversation'] = pd.concat([st.session_state['conversation'], data], ignore_index=True)
 
 st.set_page_config(page_title='Quest🔍')
@@ -158,14 +192,14 @@ for file_name in file_names:
             data = json.load(f)
             all_settings.append(data)
 
-settings = {setting['setting_name']: (setting['warn_assistant'], pd.DataFrame(setting['starting_conversation'])) for setting in all_settings}
+settings = {setting['setting_name']: (setting['mood'], setting['warn_assistant'], pd.DataFrame(setting['starting_conversation'])) for setting in all_settings}
 
 chosen_settings = st.sidebar.selectbox('Assistant settings',
                                           settings.keys(),
                                           help='Determines how the assistant will behave (Custom settings can be created in the conversation_settings folder).',
                                           index=0)
 
-warn_assistant, starting_conversation = settings[chosen_settings]
+mood, warn_assistant, starting_conversation = settings[chosen_settings]
 
 with st.sidebar:
     lottie_image1 = load_lottie_url('https://assets10.lottiefiles.com/packages/lf20_ofa3xwo7.json')
@@ -177,25 +211,8 @@ if 'api_key' not in st.session_state:
         with open('api_key.txt') as api_key:
             st.session_state['api_key'] = api_key.read()
     except:
-        with st.form('API Key'):
-            api_key = st.text_input(label='Insert your API key here')
-            api_submitted = st.form_submit_button("Submit")
-            api_checkbox = st.checkbox('Remember my key *(Not yet implemented in the deployed version)*', disabled=True)
-            #st.markdown("NOTE: By saving your key, it will be stored in a local file without encryption.")
+        api_key_form()
 
-        st.markdown("[Find your API key here](https://beta.openai.com/account/api-keys)")
-        
-        if api_submitted and api_checkbox:
-            f = open("api_key.txt", "a")
-            f.write(api_key)
-            f.close()
-            
-        if api_submitted:
-            st.session_state['api_key'] = api_key
-            st.experimental_rerun()
-        
-        st.stop()
-  
 openai.api_key = st.session_state['api_key']
 
 # App layout
@@ -283,10 +300,11 @@ with response:
     if chat_submitted and user_chat_text != '':
         st.write('👤User: ' + user_chat_text)
 
-        similar_google_results = find_top_similar_results(st.session_state['google_history'], user_chat_text, 5)
-        similar_conversation = find_top_similar_results(st.session_state['conversation'], user_chat_text, 4)
+        with st.spinner('Sending message...'):
+            similar_google_results = find_top_similar_results(st.session_state['google_history'], user_chat_text, 5)
+            similar_conversation = find_top_similar_results(st.session_state['conversation'], user_chat_text, 4)
         
-        prompt = "You are a friendly and helpful AI assistant. You don't have access to the internet beyond the google searches that the user provides.\n"
+        prompt = mood
         if similar_google_results.empty:
             prompt += "The user did not make a google search to provide more information.\n"
         else:
