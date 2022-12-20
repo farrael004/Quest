@@ -273,7 +273,9 @@ with tab2:
     chat = st.container()
     chosen_settings = st.selectbox('Assistant settings',
                                           settings.keys(),
-                                          help='Determines how the assistant will behave (Custom settings can be created in the conversation_settings folder).',
+                                          help='Determines how the assistant will behave \
+                                              (Custom settings can be created in the \
+                                                  conversation_settings folder).',
                                           index=default_setting_index)
 
     mood, warn_assistant, starting_conversation = settings[chosen_settings]
@@ -281,7 +283,10 @@ with tab2:
 # Google search section
 with search:
     with st.form('Google'):
-        user_query_text = st.text_input(label='Google search',value=initial_search)
+        user_query_text = st.text_input(label='Google search',value=initial_search, help="This tab \
+            allows you to give information from across the internet to the Assistant AI. Once you've \
+                told it all the topics to search for, you can have a conversation with it in the \
+                    'Have a conversation' tab.")
         google_submitted = st.form_submit_button("Submit")
         
         query_history = st.session_state['google_history']['query'].unique().tolist()
@@ -328,9 +333,9 @@ with response:
         chat_so_far += text + '\n'
         if i < len(starting_conversation): continue
         if text[:4] == 'User':
-            text = '👤' + text
+            text = '👤' + text[:-10]
         else:
-            text = '🖥️' + markdown_litteral(text)
+            text = '🖥️' + markdown_litteral(text[:-10])
         st.write(text)
         st.markdown('---')
 
