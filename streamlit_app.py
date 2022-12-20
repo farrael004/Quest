@@ -12,14 +12,12 @@ import tiktoken
 from openai.embeddings_utils import get_embedding, cosine_similarity
 from datetime import datetime
 
-tokenizer = tiktoken.get_encoding("gpt2")
-
 def api_key_form():
     with st.form('API Key'):
         api_key = st.text_input(label='Insert your API key here')
         api_submitted = st.form_submit_button("Submit")
-        api_checkbox = st.checkbox('Remember my key *(Not yet implemented in the deployed version)*', disabled=True)
-            #st.markdown("NOTE: By saving your key, it will be stored in a local file without encryption.")
+        api_checkbox = st.checkbox('Remember my key *(Not yet implemented in the deployed version)*',
+                                   disabled=True)
 
     st.markdown("[Find your API key here](https://beta.openai.com/account/api-keys)")
     
@@ -28,6 +26,7 @@ def api_key_form():
         f = open("api_key.txt", "a")
         f.write(api_key)
         f.close()  
+
     if api_submitted:
         st.session_state['api_key'] = api_key
         print(st.session_state['api_key'][-4:])
@@ -36,16 +35,20 @@ def api_key_form():
     st.stop()
 
 def google_search(search: str, search_depth: int):
+    # Make a search request
     try:
         res = requests.get('https://google.com/search?q=' + search)
         res.raise_for_status() # Raise if a HTTPError occured
     except:
-        st.warning("There was a problem with your internet.😵  \nIf you got HTTPError: 429, that means your IP is being rate limited by Google. If you are using a VPN try disabling it. Alternatively, you can try searching again another day.😢")
+        st.warning("There was a problem with this services's internet.😵  \n\
+                    If you got HTTPError: 429, that means this services's IP \
+                    is being rate limited by Google. If you experience this, \
+                    please report the issue at https://github.com/farrael004/Quest/issues.")
         raise
     
     with st.spinner(text="Searching the internet..."):
+        # Extract link results from the search request
         soup = bs4.BeautifulSoup(res.text, 'html.parser')
-        
         link_elements = soup.select('a')
         links = [link.get('href').split('&sa=U&ved=')[0].replace('/url?q=', '')
                 for link in link_elements
@@ -54,6 +57,7 @@ def google_search(search: str, search_depth: int):
                 'support.google.com' not in link.get('href')]
         links = list(set(links)) # Remove duplicates while maintaining the same order
         
+        # Explore the links
         links_attempted = -1
         links_explored = 0
         google_results = pd.DataFrame(columns=['text', 'link', 'query'])
@@ -70,7 +74,8 @@ def google_search(search: str, search_depth: int):
                 res.raise_for_status()
             except:
                 continue
-
+            
+            # Create a table with the useful texts from the page, the page's link, and the query used 
             useful_text = extract_useful_text_from_page(res)
             link_list = [links[links_attempted] for i in range(len(useful_text))] # Creates a list of the same link to match the length of useful_text
             query_list = [search for i in range(len(useful_text))] # Creates a list of the same query to match the length of useful_text
@@ -78,10 +83,12 @@ def google_search(search: str, search_depth: int):
             google_results = pd.concat([google_results, link_results])
             links_explored += 1
     
+    # Filter for only the largest results
     google_results['text_length'] = google_results['text'].str.len()
     largest_results = google_results.nlargest(50, 'text_length')
     largest_results = largest_results.drop_duplicates()
 
+    # Create embeddings
     with st.spinner('Analysing results...'):
         largest_results['ada_search'] = largest_results['text'].apply(lambda x: create_embedding(x))
 
@@ -99,15 +106,17 @@ def extract_useful_text_from_page(res):
 def split_paragraphs(paragraphs, max_length=1000):
     split_paragraphs = []
     for paragraph in paragraphs:
+        # Split the paragraph until no parts are larger than the max length
         while len(paragraph) > max_length:
             split_index = paragraph.find('. ', max_length)
+            # If there's no '. ' after the max length, check for the next instance of '.['
             if split_index == -1:
-                # If there's no full stop after the max length, check for the next instance of '.['
                 split_index = paragraph.find('.[', max_length)
+                # If there's no instance of '.[' after the max length, just split at the max length
                 if split_index == -1:
-                    # If there's no instance of '.[' after the max length, just split at the max length
                     split_index = max_length
             split_paragraph = paragraph[:split_index]
+            # Indicate where strings were split with '(...)'
             if split_paragraph.startswith('.'):
                 split_paragraph = '(...)' + split_paragraph[1:]
             else:
@@ -123,7 +132,6 @@ def find_top_similar_results(df: pd.DataFrame, query: str, n: int):
     if len(df.index) < n:
         n = len(df.index)
     embedding = create_embedding(query)
-    #embedding = get_embedding(query, engine="text-embedding-ada-002")
     df1 = df.copy()
     df1["similarities"] = df1["ada_search"].apply(lambda x: cosine_similarity(x, embedding))
     best_results = df1.sort_values("similarities", ascending=False).head(n)
@@ -136,7 +144,15 @@ def create_embedding(query):
         api_error_warning()
 
 def api_error_warning():
-    st.warning("Something went wrong.  \n  \n> An error occured when trying to send your request to OpenAI. There are a few reasons why this could happen:  \n> - This service cannot communicate with OpenAI's API.  \n> - You exceeded your rate limit. Check your usage and limit [here](https://beta.openai.com/account/usage)  \n> - You entered an invalid API key. Try getting a new key [here](https://beta.openai.com/account/api-keys) and refresh this page.", icon='⚠️')
+    st.warning("Something went wrong.  \n  \n\
+        > An error occured when trying to send your request to OpenAI.\
+            There are a few reasons why this could happen:  \n\
+        > - This service cannot communicate with OpenAI's API.  \n\
+        > - You exceeded your rate limit. Check your usage and limit \
+            [here](https://beta.openai.com/account/usage)  \n\
+        > - You entered an invalid API key. Try getting a new key \
+            [here](https://beta.openai.com/account/api-keys) and refresh this page.",
+            icon='⚠️')
 
 
 def gpt3_call(prompt: str, tokens: int, temperature: int=1, stop=None):
@@ -168,6 +184,7 @@ def load_lottie_url(url: str):
 def markdown_litteral(string: str):
     return string.replace('$','\$')
 
+tokenizer = tiktoken.get_encoding("gpt2")
 def num_of_tokens(prompt: str):
     return len(tokenizer.encode(prompt))
 
@@ -205,7 +222,8 @@ def add_conversation_entry(new_entry):
     text_length = len(new_entry)
     data = pd.DataFrame({'text': new_entry, 'text_length': text_length}, index=[0])
     data['ada_search'] = data['text'].apply(lambda x: create_embedding(x))
-    st.session_state['conversation'] = pd.concat([st.session_state['conversation'], data], ignore_index=True)
+    st.session_state['conversation'] = pd.concat([st.session_state['conversation'], data],
+                                                 ignore_index=True)
 
 st.set_page_config(page_title='Quest🔍')
 st.title("Quest🔍")
@@ -222,15 +240,21 @@ for file_name in file_names:
             data = json.load(f)
             all_settings.append(data)
 
-settings = {setting['setting_name']: (setting['mood'], setting['warn_assistant'], pd.DataFrame(setting['starting_conversation'])) for setting in all_settings}
+settings = {setting['setting_name']: (setting['mood'],
+                                      setting['warn_assistant'],
+                                      pd.DataFrame(setting['starting_conversation']))
+            for setting in all_settings}
+
+# Set default Assistant setting
 default_setting = 'Strictly Factual'
 default_setting_index = list(settings.keys()).index(default_setting)
 
+# Create Sidebar
 with st.sidebar:
     lottie_image1 = load_lottie_url('https://assets10.lottiefiles.com/packages/lf20_ofa3xwo7.json')
     st_lottie(lottie_image1)
 
-# Load the API key
+# Get the API key
 if 'api_key' not in st.session_state:
     try:
         with open('api_key.txt') as api_key:
@@ -240,7 +264,7 @@ if 'api_key' not in st.session_state:
 
 openai.api_key = st.session_state['api_key']
 
-# Defining google search history
+# Get google search history
 if 'google_history' not in st.session_state:
     st.session_state['google_history'] = load_google_history()
 
@@ -258,16 +282,18 @@ user_query = st.session_state['user_query']
 # App layout
 tab1, tab2 = st.tabs(["Internet search", "Have a conversation"])
 
+# Internet search tab
 with tab1:
     st.markdown("## Tell the Assistant what to research about.")
     st.markdown("This tab allows you to give information from across the internet to the Assistant AI. \
-        Once you've told it all the topics to search for, you can have a conversation with it in the 'Have a \
-            conversation' tab.")
+        Once you've told it all the topics to search for, you can have a conversation with it in the \
+            'Have a conversation' tab.")
     search_history = st.session_state['google_history']['query'].unique().tolist()
     search_history.insert(0,'')
     initial_search = st.selectbox('Search history', search_history, index=0)
     search = st.container()
-    
+
+# Have a conversation tab
 with tab2:
     response = st.container()
     chat = st.container()
@@ -290,8 +316,10 @@ with search:
         google_submitted = st.form_submit_button("Submit")
         
         query_history = st.session_state['google_history']['query'].unique().tolist()
+        
         # If the user pressed submit to make a new search or selected an existing one from history
         if (google_submitted and user_query_text != '') or initial_search != '':
+            # Make an internet search if the same search was not done before
             if user_query_text not in query_history:
                 search_results = google_search(user_query_text, 3)
                 update_history(search_results)
@@ -301,15 +329,15 @@ with search:
             
             similar_results = find_top_similar_results(search_results, user_query_text, 5)
             
+            # Record search results
             st.session_state['google_findings'] = similar_results['text'].to_list()
-            google_findings = st.session_state['google_findings']
-            
             st.session_state['links'] = similar_results['link'].to_list()
-            links = st.session_state['links']
-            
             st.session_state['user_query'] = user_query_text
+            google_findings = st.session_state['google_findings']
+            links = st.session_state['links']
             user_query = st.session_state['user_query']
             
+            # Display search results
             if len(user_query) > 0:
                 st.markdown('---')
                 st.markdown(f'# {user_query}')
@@ -323,7 +351,10 @@ with chat:
         chat_submitted = st.form_submit_button("Submit")
 
 # Initialize the conversation if it was not initialized before or if the assistant settings changed
-if 'conversation' not in st.session_state or starting_conversation['text'].to_list() != st.session_state['conversation']['text'].iloc[:len(starting_conversation.index)].to_list():
+if ('conversation' not in st.session_state 
+    or starting_conversation['text'].to_list() != 
+    st.session_state['conversation']['text'].iloc[:len(starting_conversation.index)].to_list()):
+    
     st.session_state['conversation'] = starting_conversation
 
 with response:
@@ -339,33 +370,47 @@ with response:
         st.write(text)
         st.markdown('---')
 
-    # Submits new prompt
+    # Submit new user message
     if chat_submitted and user_chat_text != '':
+        # Show user message
         st.write('👤User: ' + user_chat_text)
 
+        # Find relevant search results and conversation entries to craft the AI prompt
         with st.spinner('Sending message...'):
-            similar_google_results = find_top_similar_results(st.session_state['google_history'], user_chat_text, 5)
-            similar_conversation = find_top_similar_results(st.session_state['conversation'], user_chat_text, 4)
+            similar_google_results = find_top_similar_results(st.session_state['google_history'],
+                                                              user_chat_text, 5)
+            similar_conversation = find_top_similar_results(st.session_state['conversation'],
+                                                            user_chat_text, 4)
         
         # Knowing the current time and date may be important for interpreting news articles.
         date = datetime.now()
-        current_date_and_time = f'Current time is {date.strftime("%I")}:{date.strftime("%M")} {date.strftime("%p")} {date.strftime("%A")} {date.strftime("%B")} {date.day} {date.year}.\n'
+        current_date_and_time = f'Current time is \
+            {date.strftime("%I")}:{date.strftime("%M")} {date.strftime("%p")} \
+                {date.strftime("%A")} {date.strftime("%B")} {date.day} {date.year}.\n'
         
+        # Create the prompt to feed to the AI
         prompt = mood + current_date_and_time
         if similar_google_results.empty:
             prompt += "The user did not make a google search to provide more information.\n"
         else:
             prompt += "The user provided you with google searches.\nYour findings are: " + \
                     '\n'.join(similar_google_results['text'].to_list()) + "\n"
-            
         prompt += 'These are the relevant entries from the conversation so far (in order of importance):\n' + \
-            '\n'.join(similar_conversation['text'].to_list()) + '\nThese are the last two messages:\nAssistant: ' + st.session_state['conversation']['text'].iloc[-1] + '\nUser: ' + user_chat_text + warn_assistant + '\nAssistant:'
+            '\n'.join(similar_conversation['text'].to_list()) + '\nThese are the last two messages:\nAssistant: \
+                ' + st.session_state['conversation']['text'].iloc[-1] + '\nUser: \
+                    ' + user_chat_text + warn_assistant + '\nAssistant:'
 
         tokens = num_of_tokens(prompt)
+        
+        # Send prompt to the AI and recording it to chat history
         with st.spinner('Generating response...'):
             answer = gpt3_call(prompt, tokens=4000 - tokens, stop='User:')
-        add_conversation_entry('User: ' + user_chat_text + f'({date.strftime("%I")}:{date.strftime("%M")} {date.strftime("%p")})')
-        add_conversation_entry('Assistant: ' + answer + f'({date.strftime("%I")}:{date.strftime("%M")} {date.strftime("%p")})')
+        add_conversation_entry('User: ' + user_chat_text + 
+                               f'({date.strftime("%I")}:{date.strftime("%M")} {date.strftime("%p")})')
+        add_conversation_entry('Assistant: ' + answer + 
+                               f'({date.strftime("%I")}:{date.strftime("%M")} {date.strftime("%p")})')
+        
+        # Display the AI response
         st.markdown('---')
         st.write('🖥️Assistant: ' + markdown_litteral(answer))
         with st.expander("What sources did I use to make this answer?"):
