@@ -71,10 +71,12 @@ def google_search(search: str, search_depth: int):
                 continue
 
             soup = bs4.BeautifulSoup(res.text, 'html.parser')
-            _link_text = list(set(soup.get_text(separator='\n').splitlines())) # Separate all text by lines and remove duplicates
+            _link_text = list(set(soup.get_text().splitlines())) # Separate all text by lines and remove duplicates
             _useful_text = [s for s in _link_text if len(s) > 30] # Get only strings above 30 characters
-            _links = [links[links_attempted] for i in range(len(_useful_text))]
-            _query = [search for i in range(len(_useful_text))]
+            _useful_text = split_paragraphs(_useful_text) # If the string is too long it will split it at full stops '. '
+            _useful_text = split_paragraphs(_useful_text) # Do it again just for good measure (otherwise it wouldn't work for all strings for some reason. Try searching "Who is Elon Musk" to test this issue)
+            _links = [links[links_attempted] for i in range(len(_useful_text))] # Creates a list of the same link to match the length of _useful_text
+            _query = [search for i in range(len(_useful_text))] # Creates a list of the same query to match the length of _useful_text
             _link_results = pd.DataFrame({'text': _useful_text, 'link': _links, 'query': _query})
             google_results = pd.concat([google_results, _link_results])
             links_explored += 1
@@ -86,6 +88,22 @@ def google_search(search: str, search_depth: int):
         largest_results['ada_search'] = largest_results['text'].apply(lambda x: create_embedding(x))
 
     return largest_results
+
+def split_paragraphs(paragraphs, max_length=1000):
+    split_paragraphs = []
+    for paragraph in paragraphs:
+        while len(paragraph) > max_length:
+            split_index = paragraph.find('. ', max_length)
+            if split_index == -1:
+                # If there's no full stop after the max length, check for the next instance of '.['
+                split_index = paragraph.find('.[', max_length)
+                if split_index == -1:
+                    # If there's no instance of '.[' after the max length, just split at the max length
+                    split_index = max_length
+            split_paragraphs.append(paragraph[:split_index])
+            paragraph = paragraph[split_index:]
+        split_paragraphs.append(paragraph)
+    return split_paragraphs
 
 
 def find_top_similar_results(df: pd.DataFrame, query: str, n: int):
@@ -194,13 +212,6 @@ for file_name in file_names:
 
 settings = {setting['setting_name']: (setting['mood'], setting['warn_assistant'], pd.DataFrame(setting['starting_conversation'])) for setting in all_settings}
 
-chosen_settings = st.sidebar.selectbox('Assistant settings',
-                                          settings.keys(),
-                                          help='Determines how the assistant will behave (Custom settings can be created in the conversation_settings folder).',
-                                          index=0)
-
-mood, warn_assistant, starting_conversation = settings[chosen_settings]
-
 with st.sidebar:
     lottie_image1 = load_lottie_url('https://assets10.lottiefiles.com/packages/lf20_ofa3xwo7.json')
     st_lottie(lottie_image1)
@@ -214,11 +225,6 @@ if 'api_key' not in st.session_state:
         api_key_form()
 
 openai.api_key = st.session_state['api_key']
-
-# App layout
-response = st.container()
-chat = st.container()
-search = st.expander('Google Search', expanded=True)
 
 # Defining google search history
 if 'google_history' not in st.session_state:
@@ -235,15 +241,33 @@ google_findings = st.session_state['google_findings']
 links = st.session_state['links']
 user_query = st.session_state['user_query']
 
-with st.sidebar:
+# App layout
+tab1, tab2 = st.tabs(["Internet search", "Have a conversation"])
+
+with tab1:
+    st.markdown("## Tell the Assistant what to research about.")
+    st.markdown("This tab allows you to give information from across the internet to the Assistant AI. \
+        Once you've told it all the topics to search for, you can have a conversation with it in the 'Have a \
+            conversation' tab.")
     search_history = st.session_state['google_history']['query'].unique().tolist()
     search_history.insert(0,'')
     initial_search = st.selectbox('Search history', search_history, index=0)
+    search = st.container()
+    
+with tab2:
+    response = st.container()
+    chat = st.container()
+    chosen_settings = st.selectbox('Assistant settings',
+                                          settings.keys(),
+                                          help='Determines how the assistant will behave (Custom settings can be created in the conversation_settings folder).',
+                                          index=0)
+
+    mood, warn_assistant, starting_conversation = settings[chosen_settings]
 
 # Google search section
 with search:
     with st.form('Google'):
-        user_query_text = st.text_input(label='Google search',value=initial_search, label_visibility="hidden")
+        user_query_text = st.text_input(label='Google search',value=initial_search)
         google_submitted = st.form_submit_button("Submit")
         
         query_history = st.session_state['google_history']['query'].unique().tolist()
