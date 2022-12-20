@@ -223,6 +223,8 @@ for file_name in file_names:
             all_settings.append(data)
 
 settings = {setting['setting_name']: (setting['mood'], setting['warn_assistant'], pd.DataFrame(setting['starting_conversation'])) for setting in all_settings}
+default_setting = 'Strictly Factual'
+default_setting_index = list(settings.keys()).index(default_setting)
 
 with st.sidebar:
     lottie_image1 = load_lottie_url('https://assets10.lottiefiles.com/packages/lf20_ofa3xwo7.json')
@@ -272,7 +274,7 @@ with tab2:
     chosen_settings = st.selectbox('Assistant settings',
                                           settings.keys(),
                                           help='Determines how the assistant will behave (Custom settings can be created in the conversation_settings folder).',
-                                          index=0)
+                                          index=default_setting_index)
 
     mood, warn_assistant, starting_conversation = settings[chosen_settings]
 
