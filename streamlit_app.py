@@ -10,6 +10,7 @@ import os
 import json
 import tiktoken
 from openai.embeddings_utils import get_embedding, cosine_similarity
+from datetime import datetime
 
 tokenizer = tiktoken.get_encoding("gpt2")
 
@@ -70,24 +71,30 @@ def google_search(search: str, search_depth: int):
             except:
                 continue
 
-            soup = bs4.BeautifulSoup(res.text, 'html.parser')
-            _link_text = list(set(soup.get_text().splitlines())) # Separate all text by lines and remove duplicates
-            _useful_text = [s for s in _link_text if len(s) > 30] # Get only strings above 30 characters
-            _useful_text = split_paragraphs(_useful_text) # If the string is too long it will split it at full stops '. '
-            _useful_text = split_paragraphs(_useful_text) # Do it again just for good measure (otherwise it wouldn't work for all strings for some reason. Try searching "Who is Elon Musk" to test this issue)
-            _links = [links[links_attempted] for i in range(len(_useful_text))] # Creates a list of the same link to match the length of _useful_text
-            _query = [search for i in range(len(_useful_text))] # Creates a list of the same query to match the length of _useful_text
-            _link_results = pd.DataFrame({'text': _useful_text, 'link': _links, 'query': _query})
-            google_results = pd.concat([google_results, _link_results])
+            useful_text = extract_useful_text_from_page(res)
+            link_list = [links[links_attempted] for i in range(len(useful_text))] # Creates a list of the same link to match the length of useful_text
+            query_list = [search for i in range(len(useful_text))] # Creates a list of the same query to match the length of useful_text
+            link_results = pd.DataFrame({'text': useful_text, 'link': link_list, 'query': query_list})
+            google_results = pd.concat([google_results, link_results])
             links_explored += 1
     
     google_results['text_length'] = google_results['text'].str.len()
     largest_results = google_results.nlargest(50, 'text_length')
     largest_results = largest_results.drop_duplicates()
+
     with st.spinner('Analysing results...'):
         largest_results['ada_search'] = largest_results['text'].apply(lambda x: create_embedding(x))
 
     return largest_results
+
+def extract_useful_text_from_page(res):
+    soup = bs4.BeautifulSoup(res.text, 'html.parser')
+    link_text = list(set(soup.get_text().splitlines())) # Separate all text by lines and remove duplicates
+    useful_text = [s for s in link_text if len(s) > 30] # Get only strings above 30 characters
+    useful_text = split_paragraphs(useful_text) # If the string is too long it will split it at full stops '. '
+    useful_text = split_paragraphs(useful_text) # Do it again just for good measure (otherwise it wouldn't work for all strings for some reason. Try searching "Who is Elon Musk" to test this issue)
+    return useful_text
+
 
 def split_paragraphs(paragraphs, max_length=1000):
     split_paragraphs = []
@@ -100,10 +107,16 @@ def split_paragraphs(paragraphs, max_length=1000):
                 if split_index == -1:
                     # If there's no instance of '.[' after the max length, just split at the max length
                     split_index = max_length
-            split_paragraphs.append(paragraph[:split_index])
+            split_paragraph = paragraph[:split_index]
+            if split_paragraph.startswith('.'):
+                split_paragraph = '(...)' + split_paragraph[1:]
+            else:
+                split_paragraph += '(...)'
+            split_paragraphs.append(split_paragraph)
             paragraph = paragraph[split_index:]
         split_paragraphs.append(paragraph)
     return split_paragraphs
+
 
 
 def find_top_similar_results(df: pd.DataFrame, query: str, n: int):
@@ -197,7 +210,6 @@ def add_conversation_entry(new_entry):
 st.set_page_config(page_title='Quest🔍')
 st.title("Quest🔍")
 st.markdown("By [Rafael Moraes](https://github.com/farrael004)")
-st.markdown('---')
 
 # Load Assistant settings
 script_path = os.path.abspath(__file__).replace('streamlit_app.py', '')
@@ -328,11 +340,15 @@ with response:
             similar_google_results = find_top_similar_results(st.session_state['google_history'], user_chat_text, 5)
             similar_conversation = find_top_similar_results(st.session_state['conversation'], user_chat_text, 4)
         
-        prompt = mood
+        # Knowing the current time and date may be important for interpreting news articles.
+        date = datetime.now()
+        current_date_and_time = f'Current time is {date.strftime("%I")}:{date.strftime("%M")} {date.strftime("%p")} {date.strftime("%A")} {date.strftime("%B")} {date.day} {date.year}.\n'
+        
+        prompt = mood + current_date_and_time
         if similar_google_results.empty:
             prompt += "The user did not make a google search to provide more information.\n"
         else:
-            prompt += "The user provided you with google searches.\nYour findings are:" + \
+            prompt += "The user provided you with google searches.\nYour findings are: " + \
                     '\n'.join(similar_google_results['text'].to_list()) + "\n"
             
         prompt += 'These are the relevant entries from the conversation so far (in order of importance):\n' + \
@@ -341,8 +357,8 @@ with response:
         tokens = num_of_tokens(prompt)
         with st.spinner('Generating response...'):
             answer = gpt3_call(prompt, tokens=4000 - tokens, stop='User:')
-        add_conversation_entry('User: ' + user_chat_text)
-        add_conversation_entry('Assistant: ' + answer)
+        add_conversation_entry('User: ' + user_chat_text + f'({date.strftime("%I")}:{date.strftime("%M")} {date.strftime("%p")})')
+        add_conversation_entry('Assistant: ' + answer + f'({date.strftime("%I")}:{date.strftime("%M")} {date.strftime("%p")})')
         st.markdown('---')
         st.write('🖥️Assistant: ' + markdown_litteral(answer))
         with st.expander("What sources did I use to make this answer?"):
