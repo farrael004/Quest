@@ -2,11 +2,12 @@ import streamlit as st
 import bs4
 import requests
 import pickle
+from logging import warning
 import threading
 import pandas as pd
 import database as db
 from gpt_api import create_embedding
-from utils import markdown_litteral
+from utils import markdown_litteral, separate_list
 
 
 def google_search(search: str, search_depth: int):
@@ -15,9 +16,10 @@ def google_search(search: str, search_depth: int):
         res = requests.get('https://google.com/search?q=' + search)
         res.raise_for_status() # Raise if a HTTPError occured
     except:
+        warning("There was a problem with this services's internet")
         st.warning("There was a problem with this services's internet.😵  \n\
                     If you got HTTPError: 429, that means this services's IP \
-                    is being rate limited by Google. If you experience this, \
+                    is being rate limited. If you experience this, \
                     please report the issue at https://github.com/farrael004/Quest/issues.")
         raise
     
@@ -104,17 +106,25 @@ def split_paragraphs(paragraphs, max_length=1000):
 
 
 def load_google_history():
-    # Try to find the search history, if can't find it, create a new search history
+    # Try to find the search history, if it's empty or it can't find it, create a new search history
     try:
-        return db.get_user_search_history(st.session_state['username'])
+        data = db.get_user_search_history(st.session_state['username'])
+        if data == []:
+            return pd.DataFrame(columns=['text', 'link', 'query', 'text_length', 'ada_search'])
+        else:
+            return pd.DataFrame(data).drop(['key', 'username'], axis=1)
     except:
+        warning('Could not fetch history from database')
         data = pd.DataFrame(columns=['text', 'link', 'query', 'text_length', 'ada_search'])
         return data
 
 
 def save_google_history(results):
-    for data in results:
-        db.insert_search_history(st.session_state['username'], data)
+    username = st.session_state['username']
+    results['username'] = [username for i in range(len(results.index))]
+    entries = separate_list(results.to_dict('records'), 25)
+    for entry in entries:
+        db.insert_search_history(entry)
   
         
 def save_google_history_in_thread(results):
@@ -129,7 +139,9 @@ def get_user_search_history():
   
    
 def update_history(results):
-    save_google_history(results.to_dict('records'))
+    with st.spinner('Committing to memory...'):
+        save_google_history(results)
+        
     history = st.session_state['google_history']
 
     if history.empty:

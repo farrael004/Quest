@@ -1,5 +1,5 @@
 import streamlit as st
-from streamlit_extras.buy_me_a_coffee import button
+from streamlit_extras import buy_me_a_coffee
 from streamlit_extras.add_vertical_space import add_vertical_space
 from streamlit_extras.badges import badge
 from streamlit_lottie import st_lottie
@@ -10,7 +10,7 @@ from internet_search import *
 from assistant import *
 from gpt_api import find_top_similar_results
 from auth import authenticate_user, logout_button
-
+from database import delete_user_button
 
 st.set_page_config(page_title='Quest🔍')
 st.title("Quest🔍")
@@ -24,9 +24,12 @@ with st.sidebar:
     lottie_image1 = load_lottie_url('https://assets10.lottiefiles.com/packages/lf20_ofa3xwo7.json')
     st_lottie(lottie_image1)
 
-authenticate_user(cookie_expiry_days=0)
+authenticate_user(cookie_expiry_days=30)
 
 openai.api_key = load_api_key()
+
+if 'settings' not in st.session_state:
+    st.session_state['settings'] = {}
 
 # App layout
 tab1, tab2, tab3 = st.tabs(["Internet search", "Have a conversation", "Settings"])
@@ -49,20 +52,12 @@ with tab1:
 with tab2:
     response = st.container()
     chat = st.container()
-    settings, default_setting_index = load_assistant_settings()
-    chosen_settings = st.selectbox('Assistant settings',
-                                          settings.keys(),
-                                          help='Determines how the assistant will behave \
-                                              (Custom settings can be created in the \
-                                                  conversation_settings folder).',
-                                          index=default_setting_index)
-
-    mood, warn_assistant, starting_conversation = settings[chosen_settings]
 
 with tab3:
     logout_button()
     reset_key_button()
     delete_history_button()
+    delete_user_button()
 
 # Google search section
 with search:
@@ -93,23 +88,46 @@ with search:
 # Section where user inputs directly to GPT
 with chat:
     with st.form('Chat'):
-        user_chat_text = st.text_input(label="Ask the Assistant")
+        user_chat_text = st.text_area(label="Ask the Assistant")
         chat_submitted = st.form_submit_button("Submit")
+        with st.expander("Assistant settings"):
+            settings, default_setting_index = load_assistant_settings()
+            chosen_settings = st.selectbox('Archetype',
+                                                settings.keys(),
+                                                help='Determines how the assistant will behave \
+                                                    (Custom settings can be created in the \
+                                                        conversation_settings folder).',
+                                                index=default_setting_index)
+            
+            if 'consult_search_history' not in st.session_state['settings']:
+                st.session_state['settings']['consult_search_history'] = True
+                
+            consult_search_history = st.checkbox('Consult search history', value=st.session_state['settings']['consult_search_history'])
+            specify_sources = st.text_input("Specify links", help="This field allows you to specify urls \
+                for the Assistant to source from. Separate each link with a comma and space `, `.")
 
-
-# User input is used here to process and display GPT's response
-with response:
-    load_conversation(starting_conversation)
-    display_chat_history(starting_conversation)
-    submit_user_message(mood, warn_assistant, user_chat_text, chat_submitted)
+if chat_submitted:
+    st.session_state['settings']['consult_search_history'] = consult_search_history
+    # User input is used here to process and display GPT's response
+    with response:
+        mood, warn_assistant, starting_conversation = settings[chosen_settings]
+        load_conversation(starting_conversation)
+        display_chat_history(starting_conversation)
+        submit_user_message(mood,
+                            warn_assistant,
+                            user_chat_text,
+                            chat_submitted,
+                            consult_search_history,
+                            specify_sources)
 
 add_vertical_space(4)
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    button('farrael004', floating=False)
+    buy_me_a_coffee.button('farrael004', floating=False)
 with col2:
     st.markdown("By [Rafael Moraes](https://github.com/farrael004)")
     badge(type="github", name="farrael004/Quest")
 with col3:
     st.container()
+

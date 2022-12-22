@@ -75,6 +75,10 @@ class LoginSignup(stauth.Authenticate):
                         if name == '' or username == '' or password == '':
                             st.warning('Please fill all fields')
                             st.stop()
+                        
+                        if username == '__removed__':
+                            st.warning('Invalid username')
+                            st.stop()
                             
                         if password != confirm_password:
                             st.warning("Password does not match 'Confirm password' field.")

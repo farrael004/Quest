@@ -1,6 +1,8 @@
 from tiktoken import get_encoding
 import streamlit as st
 import requests
+from logging import warning
+from itertools import zip_longest
 
 tokenizer = get_encoding("gpt2")
 def num_of_tokens(prompt: str):
@@ -17,6 +19,7 @@ def load_lottie_url(url: str):
             return None
         return r.json()
     except:
+        warning(f'Could not find lottie from url {url}.')
         return None
     
 def api_error_warning():
@@ -29,3 +32,10 @@ def api_error_warning():
         > - You entered an invalid API key. Try getting a new key \
             [here](https://beta.openai.com/account/api-keys) and refresh this page.",
             icon='⚠️')
+    
+def separate_list(iterable, n):
+    # Collect data into fixed-length chunks or blocks
+    args = [iter(iterable)] * n
+    groups = zip_longest(*args, fillvalue=None) # ('ABCDEFG', 3, 'None') --> ((A,B,C), (D,E,F), (G,None,None))
+    result = list(groups)
+    return [list(filter(lambda x: x is not None, sublist)) for sublist in result] # Remove None

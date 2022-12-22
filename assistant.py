@@ -7,6 +7,7 @@ from gpt_api import find_top_similar_results, gpt3_call
 from gpt_api import create_embedding
 from utils import markdown_litteral, num_of_tokens
 
+
 def load_assistant_settings():
     own_script_name = os.path.basename(__file__)
     script_path = os.path.abspath(__file__).replace(own_script_name, '')
@@ -48,6 +49,7 @@ def display_chat_history(starting_conversation):
             text = '🖥️' + markdown_litteral(text[:-10])
         st.write(text)
         st.markdown('---')
+     
         
 def add_conversation_entry(new_entry):
     text_length = len(new_entry)
@@ -88,8 +90,15 @@ def display_assistant_response(similar_google_results, prompt, answer):
     with st.expander("Prompt used:"):
         st.write(markdown_litteral(prompt).replace('\n','  \n  \n'))
         st.markdown(':green[Tokens used: ]' + f':green[{str(num_of_tokens(prompt))}]')
+   
         
-def submit_user_message(mood, warn_assistant, user_chat_text, chat_submitted):
+def submit_user_message(mood,
+                        warn_assistant,
+                        user_chat_text,
+                        chat_submitted,
+                        consult_search_history,
+                        specify_sources):
+    
     if not chat_submitted or user_chat_text == '': return
     
     # Show user message
@@ -97,8 +106,7 @@ def submit_user_message(mood, warn_assistant, user_chat_text, chat_submitted):
 
     # Find relevant search results and conversation entries to craft the AI prompt
     with st.spinner('Sending message...'):
-        similar_google_results = find_top_similar_results(st.session_state['google_history'],
-                                                            user_chat_text, 5)
+        similar_google_results = get_info_from_internet(user_chat_text, consult_search_history, specify_sources)
         similar_conversation = find_top_similar_results(st.session_state['conversation'],
                                                         user_chat_text, 4)
     
@@ -109,12 +117,12 @@ def submit_user_message(mood, warn_assistant, user_chat_text, chat_submitted):
             {date.strftime("%A")} {date.strftime("%B")} {date.day} {date.year}.\n'
     
     prompt = create_prompt(mood,
-                            warn_assistant,
-                            user_chat_text,
-                            similar_google_results,
-                            similar_conversation,
-                            current_time,
-                            current_date_and_time)
+                           warn_assistant,
+                           user_chat_text,
+                           similar_google_results,
+                           similar_conversation,
+                           current_time,
+                           current_date_and_time)
     
     tokens = num_of_tokens(prompt)
     
@@ -124,4 +132,14 @@ def submit_user_message(mood, warn_assistant, user_chat_text, chat_submitted):
     add_conversation_entry('User: ' + user_chat_text + f' ({current_time})')
     add_conversation_entry('Assistant: ' + answer + f' ({current_time})')
     
-    display_assistant_response(num_of_tokens, similar_google_results, prompt, answer)
+    display_assistant_response(similar_google_results, prompt, answer)
+
+def get_info_from_internet(user_chat_text, consult_search_history, specify_sources):
+    if not consult_search_history: return pd.DataFrame()
+    
+    if specify_sources == '':
+        similar_google_results = find_top_similar_results(st.session_state['google_history'],
+                                                                user_chat_text, 5)
+    else: return pd.DataFrame() # Add specify link support
+     
+    return similar_google_results
