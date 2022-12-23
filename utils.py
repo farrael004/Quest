@@ -23,14 +23,7 @@ def load_lottie_url(url: str):
         return None
     
 def api_error_warning():
-    st.warning("Something went wrong.  \n  \n\
-        > An error occured when trying to send your request to OpenAI.\
-            There are a few reasons why this could happen:  \n\
-        > - This service cannot communicate with OpenAI's API.  \n\
-        > - You exceeded your rate limit. Check your usage and limit \
-            [here](https://beta.openai.com/account/usage)  \n\
-        > - You entered an invalid API key. Try getting a new key \
-            [here](https://beta.openai.com/account/api-keys) and refresh this page.",
+    st.warning("Something went wrong.  \n  \n> An error occured when trying to send your request to OpenAI.There are a few reasons why this could happen:  \n> - This service cannot communicate with OpenAI's API.  \n> - You exceeded your rate limit. Check your usage and limit [here](https://beta.openai.com/account/usage)  \n> - You entered an invalid API key. Try getting a new key [here](https://beta.openai.com/account/api-keys) and reset your API key in the settings tab.",
             icon='⚠️')
     
 def separate_list(iterable, n):
@@ -39,3 +32,8 @@ def separate_list(iterable, n):
     groups = zip_longest(*args, fillvalue=None) # ('ABCDEFG', 3, 'None') --> ((A,B,C), (D,E,F), (G,None,None))
     result = list(groups)
     return [list(filter(lambda x: x is not None, sublist)) for sublist in result] # Remove None
+
+def tell_to_reload_page():
+    st.write("# 🔄Reload the page")   
+    st.write("Reload this page to apply changes")
+    st.stop()

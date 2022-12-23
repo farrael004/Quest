@@ -24,7 +24,7 @@ with st.sidebar:
     lottie_image1 = load_lottie_url('https://assets10.lottiefiles.com/packages/lf20_ofa3xwo7.json')
     st_lottie(lottie_image1)
 
-authenticate_user(cookie_expiry_days=30)
+authenticate_user()
 
 openai.api_key = load_api_key()
 

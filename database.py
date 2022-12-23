@@ -5,6 +5,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 from deta import Deta  # pip install deta
+from utils import tell_to_reload_page
 
 
 DETA_KEY = st.secrets["DETA_KEY"]
@@ -60,7 +61,9 @@ def update_user(username, updates):
 
 def delete_user_login(username):
     """Always returns None, even if the key does not exist"""
-    return db_login.delete(username)
+    st.session_state['authenticator'].logout_function()
+    db_login.delete(username)
+    tell_to_reload_page()
 
 
 def insert_api_key(username, api_key):
@@ -95,6 +98,7 @@ def get_user_search_history(username):
 def delete_search_history(username):
     user_history = db_search_history.fetch({'username': username}).items
     user_history = pd.DataFrame(user_history)
+    if user_history.empty: return
     with st.spinner("Deleting search history."):
         for key in user_history['key']:
             db_search_history.update({'username': '__removed__'}, key=key)
@@ -102,18 +106,17 @@ def delete_search_history(username):
         
         
 def delete_user_data(username):
-    delete_user_login(username)
-    delete_api_key(username)
     delete_search_history(username)
-    st.experimental_rerun()
+    delete_api_key(username)
+    delete_user_login(username)
     
 def delete_user_button():
-    with st.form('button'):
-        delete_user = st.form_submit_button("Delete all user data")
-    if delete_user:
-        with st.container():
-            st.warning("This will permanently delete all of your data \
-                with no chance for recovery.")
-            confirmation = st.text_input('Type "delete me"')
+    with st.form("Delete all user data."):
+        st.write('Delete all user data')
+        st.warning("This will permanently delete all of your data \
+            with no chance for recovery.")
+        confirmation = st.text_input('Type "delete me"')
+        submit_button = st.form_submit_button("Submit")
+        if submit_button:
             if confirmation == 'delete me':
                 delete_user_data(st.session_state['username'])

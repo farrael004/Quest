@@ -1,5 +1,6 @@
 import streamlit as st
 import database as db
+from utils import tell_to_reload_page
 
 # Load the API key to the session state
 def load_api_key():
@@ -22,6 +23,7 @@ def api_key_form():
 
     st.markdown("[Find your API key here](https://beta.openai.com/account/api-keys)")
     
+    
     # Associate the user API key with the user account   
     if api_submitted and save_api_key:
         db.insert_api_key(st.session_state['username'], api_key)
@@ -34,6 +36,7 @@ def api_key_form():
 
 def reset_api_key():
     db.delete_api_key(st.session_state['username'])
+    st.session_state.pop('api_key')
     api_key_form()
 
 def reset_key_button():

@@ -4,12 +4,11 @@ import streamlit as st
 import database as db
 from datetime import datetime, timedelta
 import streamlit_authenticator as stauth
+from utils import tell_to_reload_page
 
 
 class LoginSignup(stauth.Authenticate):
-    def login(self, form_name, location='main'):
-        if location not in ['main', 'sidebar']:
-            raise ValueError("Location must be one of 'main' or 'sidebar'")
+    def login(self, form_name):
         
         if not st.session_state['authentication_status']:
             self.token = self.cookie_manager.get(self.cookie_name)
@@ -27,17 +26,15 @@ class LoginSignup(stauth.Authenticate):
                 login, signup = st.tabs(['Login', 'Signup'])
                 
                 with login:
-                    if location == 'main':
-                        login_form = st.form('Login')
-                    elif location == 'sidebar':
-                        login_form = st.sidebar.form('Login')
-
+                    login_form = st.form('Login')
                     login_form.subheader(form_name)
                     self.username = login_form.text_input('Username')
                     st.session_state['username'] = self.username
                     self.password = login_form.text_input('Password', type='password')
+                    remember = st.checkbox("Remember me")
 
                     if login_form.form_submit_button('Login'):
+                        if remember: self.cookie_expiry_days = 30
                         self.index = None
                         for i in range(0, len(self.usernames)):
                             if self.usernames[i] == self.username:
@@ -91,9 +88,30 @@ class LoginSignup(stauth.Authenticate):
                         st.success('Successful account creation. You may now use the Login tab.', icon='✅')
 
         return st.session_state['name'], st.session_state['authentication_status'], st.session_state['username']
+            
+    def logout_function(self):
+        self.cookie_manager.delete(self.cookie_name)
+        st.session_state['logout'] = True
+        st.session_state['name'] = None
+        st.session_state['username'] = None
+        st.session_state['authentication_status'] = None
+        
+        if 'api_key' in st.session_state:
+            st.session_state.pop('api_key')
+        if 'conversation' in st.session_state:
+            st.session_state.pop('conversation')
+        if 'google_history' in st.session_state:
+            st.session_state.pop('google_history')
+        if 'settings' in st.session_state:
+            st.session_state.pop('settings')
+        
+        
+    def logout_button(self, button_name):
+        if st.button(button_name):
+            self.logout_function()
+            st.stop()
 
-
-def authenticate_user(cookie_expiry_days: int=30):
+def authenticate_user():
     users = db.fetch_all_users()
 
     usernames = [user["key"] for user in users]
@@ -101,19 +119,19 @@ def authenticate_user(cookie_expiry_days: int=30):
     hashed_passwords = [user["password"] for user in users]
 
     authenticator = LoginSignup(names, usernames, hashed_passwords,
-        "query_aichat", "abcdef", cookie_expiry_days=cookie_expiry_days)
+        "query_aichat", "abcdef", cookie_expiry_days=0)
     
     st.session_state['authenticator'] = authenticator
     
     (st.session_state['name'],
         authentication_status,
-        st.session_state['username']) = authenticator.login("Login", "main")
+        st.session_state['username']) = authenticator.login("Login")
     
     if authentication_status == None:
         st.stop()
     if authentication_status == False:
-            st.error("Username/password is incorrect")
+            st.warning("Username/password is incorrect")
             st.stop()
         
 def logout_button():
-    st.session_state['authenticator'].logout("Logout","main")
+    st.session_state['authenticator'].logout_button("Logout")
