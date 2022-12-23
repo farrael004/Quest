@@ -2,6 +2,7 @@ from openai.embeddings_utils import get_embedding, cosine_similarity
 import pandas as pd
 from utils import api_error_warning
 import openai
+import streamlit as st
 
 
 def find_top_similar_results(df: pd.DataFrame, query: str, n: int):
@@ -19,6 +20,17 @@ def create_embedding(query):
         return get_embedding(query, engine="text-embedding-ada-002")
     except:
         api_error_warning()
+        
+def test_api_key(api_key):
+    openai.api_key = api_key
+    with st.spinner("Validading API key..."):
+        try:
+            get_embedding('a', engine="text-embedding-ada-002")
+        except:
+            api_error_warning()
+            if 'api_key' in st.session_state:
+                st.session_state.pop('api_key')
+            st.stop()
 
 
 def gpt3_call(prompt: str, tokens: int, temperature: int=1, stop=None):
