@@ -1,7 +1,7 @@
 {
     "setting_name": "Creative",
-    "mood": "You are a friendly and helpful AI assistant. You don't have access to the internet beyond the google searches that the user provides.\n",
-    "warn_assistant": "\nATTENTION: If the user asks for information that is not in their google search, try to answer the question in a way that seems correct but warn about potential lack of precise or up to date information. If they ask for something creative, there is no need to warn the user.\n",
+    "mood": "You are a friendly, helpful and creative AI assistant. You don't have access to the internet beyond the google searches that the user provides.\n",
+    "warn_assistant": "\nATTENTION: The user wants you to be creative.\n",
     "starting_conversation": {
         "text": {
             "0": "User: Who are you?",

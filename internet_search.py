@@ -1,7 +1,6 @@
 import streamlit as st
 import bs4
 import requests
-import pickle
 from logging import warning
 import threading
 import pandas as pd
@@ -23,8 +22,15 @@ def google_search(search: str, search_depth: int):
                     please report the issue at https://github.com/farrael004/Quest/issues.")
         raise
     
-    with st.spinner(text="Searching the internet..."):
-        # Extract link results from the search request
+    links = find_links_from_search(res)
+    largest_results = page_search(search, search_depth, links)
+
+    return largest_results
+
+
+def find_links_from_search(res):
+    # Extract link results from the search request
+    with st.spinner("Getting search results..."):
         soup = bs4.BeautifulSoup(res.text, 'html.parser')
         link_elements = soup.select('a')
         links = [link.get('href').split('&sa=U&ved=')[0].replace('/url?q=', '')
@@ -32,17 +38,19 @@ def google_search(search: str, search_depth: int):
                 if '/url?q=' in link.get('href') and
                 'accounts.google.com' not in link.get('href') and
                 'support.google.com' not in link.get('href')]
-        links = list(set(links)) # Remove duplicates while maintaining the same order
-        
+        return list(set(links)) # Remove duplicates while maintaining the same order
+
+def page_search(search, search_depth, links):
+    with st.spinner(text="Searching the internet..."): 
         # Explore the links
         links_attempted = -1
         links_explored = 0
-        google_results = pd.DataFrame(columns=['text', 'link', 'query'])
+        search_results = pd.DataFrame(columns=['text', 'link', 'query'])
         link_history = st.session_state['google_history']['link'].unique().tolist()
         while links_explored < search_depth or links_attempted == len(links):
             links_attempted += 1
             if links == []:
-                st.warning("No results found. 😢")
+                st.warning("No internet results found. 😢")
                 st.stop() 
             if links[links_attempted] in link_history: continue
             # If this link does not work, go to the next one
@@ -57,18 +65,17 @@ def google_search(search: str, search_depth: int):
             link_list = [links[links_attempted] for i in range(len(useful_text))] # Creates a list of the same link to match the length of useful_text
             query_list = [search for i in range(len(useful_text))] # Creates a list of the same query to match the length of useful_text
             link_results = pd.DataFrame({'text': useful_text, 'link': link_list, 'query': query_list})
-            google_results = pd.concat([google_results, link_results])
+            search_results = pd.concat([search_results, link_results])
             links_explored += 1
     
     # Filter for only the largest results
-    google_results['text_length'] = google_results['text'].str.len()
-    largest_results = google_results.nlargest(50, 'text_length')
+    search_results['text_length'] = search_results['text'].str.len()
+    largest_results = search_results.nlargest(50, 'text_length')
     largest_results = largest_results.drop_duplicates()
 
     # Create embeddings
     with st.spinner('Analysing results...'):
         largest_results['ada_search'] = largest_results['text'].apply(lambda x: create_embedding(x))
-
     return largest_results
 
 
@@ -159,6 +166,17 @@ def display_search_results(user_query_text, google_findings, links):
         for i,finding in enumerate(google_findings):
             st.markdown(markdown_litteral(finding) + f' [Source]({links[i]})')
  
+
+def all_are_valid_links(links):
+    for link in links:
+        try:
+            res = requests.get(link)
+            res.raise_for_status()
+        except:
+            st.warning(f"The following link does not respond. Please check if it is correct and try again. \
+                  \n{link}",icon="⚠️")
+            st.stop()
+
             
 def delete_search_history():
     db.delete_search_history(st.session_state['username'])

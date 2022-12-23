@@ -32,7 +32,7 @@ if 'settings' not in st.session_state:
     st.session_state['settings'] = {}
 
 # App layout
-tab1, tab2, tab3 = st.tabs(["Internet search", "Have a conversation", "Settings"])
+tab1, tab2, tab3, tab4 = st.tabs(["Internet search", "Have a conversation", "Create your Assistant", "Settings"])
 
 # Internet search tab
 with tab1:
@@ -54,6 +54,10 @@ with tab2:
     chat = st.container()
 
 with tab3:
+    st.write("<span style='font-size:2em'>Comming soon...</span>", unsafe_allow_html=True)
+    st.write("In this page you will be able to create custom Assistant archetypes.")
+
+with tab4:
     logout_button()
     reset_key_button()
     delete_history_button()
@@ -90,35 +94,20 @@ with chat:
     with st.form('Chat'):
         user_chat_text = st.text_area(label="Ask the Assistant")
         chat_submitted = st.form_submit_button("Submit")
-        with st.expander("Assistant settings"):
-            settings, default_setting_index = load_assistant_settings()
-            chosen_settings = st.selectbox('Archetype',
-                                                settings.keys(),
-                                                help='Determines how the assistant will behave \
-                                                    (Custom settings can be created in the \
-                                                        conversation_settings folder).',
-                                                index=default_setting_index)
-            
-            if 'consult_search_history' not in st.session_state['settings']:
-                st.session_state['settings']['consult_search_history'] = True
-                
-            consult_search_history = st.checkbox('Consult search history', value=st.session_state['settings']['consult_search_history'])
-            specify_sources = st.text_input("Specify links", help="This field allows you to specify urls \
-                for the Assistant to source from. Separate each link with a comma and space `, `.")
+        settings = assistant_settings(chat_submitted)
 
-if chat_submitted:
-    st.session_state['settings']['consult_search_history'] = consult_search_history
-    # User input is used here to process and display GPT's response
-    with response:
-        mood, warn_assistant, starting_conversation = settings[chosen_settings]
-        load_conversation(starting_conversation)
-        display_chat_history(starting_conversation)
-        submit_user_message(mood,
-                            warn_assistant,
-                            user_chat_text,
-                            chat_submitted,
-                            consult_search_history,
-                            specify_sources)
+
+# User input is used here to process and display GPT's response
+with response:
+    if 'archetype' not in settings:
+        archetypes, default_setting_index = load_assistant_settings()
+        default_setting = list(archetypes.keys())[default_setting_index]
+        settings['archetype'] = archetypes[default_setting]
+    starting_conversation = settings['archetype']['starting_conversation']
+    load_conversation(starting_conversation)
+    display_chat_history(starting_conversation)
+    if chat_submitted:
+        submit_user_message(settings, user_chat_text, chat_submitted)
 
 add_vertical_space(4)
 

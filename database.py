@@ -2,7 +2,6 @@
 
 from cryptography.fernet import Fernet
 import streamlit as st
-import json
 import pandas as pd
 import datetime
 from deta import Deta  # pip install deta
@@ -35,7 +34,6 @@ def bytes_to_string(bytes: bytes):
 
 db_login = deta.Base("quest_users")
 db_api_key = deta.Base("quest_api_key")
-#db_search_history = deta.Base("quest_search_history")
 db_search_history = deta.Base("quest_internet_search")
 db_user_settings = deta.Base("quest_user_settings")
 
@@ -70,9 +68,9 @@ def insert_api_key(username, api_key):
     thirty_days_from_now = now + datetime.timedelta(days=30)
     try: # If key exists in the database
         get_api_key(username)
-        return db_api_key.update({'api_key': encrypt(api_key)}, username, expire_in=thirty_days_from_now)
+        return db_api_key.update({'api_key': encrypt(api_key)}, username, expire_at=thirty_days_from_now)
     except TypeError: # If key doesn't exist in the database
-        return db_api_key.put({'key': username, 'api_key': encrypt(api_key)}, expire_in=thirty_days_from_now)
+        return db_api_key.put({'key': username, 'api_key': encrypt(api_key)}, expire_at=thirty_days_from_now)
 
 
 def get_api_key(username):
@@ -86,7 +84,6 @@ def delete_api_key(username):
 
 def insert_search_history(search_entry):
     return db_search_history.put_many(search_entry)
-    #return db_search_history.put({'A': 1, 'B': 2})
 
 
 def get_user_search_history(username):
@@ -96,15 +93,19 @@ def get_user_search_history(username):
 
 
 def delete_search_history(username):
-    user_history_keys = db_search_history.fetch({'username': username}).items['key']
-    for key in user_history_keys:
-        db_search_history.update({'username': '__removed__'}, key=key)
+    user_history = db_search_history.fetch({'username': username}).items
+    user_history = pd.DataFrame(user_history)
+    with st.spinner("Deleting search history."):
+        for key in user_history['key']:
+            db_search_history.update({'username': '__removed__'}, key=key)
+        st.session_state.pop('google_history', None)
         
         
 def delete_user_data(username):
     delete_user_login(username)
     delete_api_key(username)
     delete_search_history(username)
+    st.experimental_rerun()
     
 def delete_user_button():
     with st.form('button'):
@@ -116,4 +117,3 @@ def delete_user_button():
             confirmation = st.text_input('Type "delete me"')
             if confirmation == 'delete me':
                 delete_user_data(st.session_state['username'])
-    
