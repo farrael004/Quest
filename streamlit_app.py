@@ -24,7 +24,7 @@ with st.sidebar:
     lottie_image1 = load_lottie_url('https://assets10.lottiefiles.com/packages/lf20_ofa3xwo7.json')
     st_lottie(lottie_image1)
 
-authenticate_user()
+#authenticate_user()
 
 openai.api_key = load_api_key()
 
@@ -58,10 +58,10 @@ with tab3:
     st.write("In this page you will be able to create custom Assistant archetypes.")
 
 with tab4:
-    logout_button()
+    #logout_button()
     reset_key_button()
-    delete_history_button()
-    delete_user_button()
+    #delete_history_button()
+    #delete_user_button()
 
 # Google search section
 with search:

@@ -146,8 +146,8 @@ def get_user_search_history():
   
    
 def update_history(results):
-    with st.spinner('Committing to memory...'):
-        save_google_history(results)
+    #with st.spinner('Committing to memory...'):
+        #save_google_history(results)
         
     history = st.session_state['google_history']
 
