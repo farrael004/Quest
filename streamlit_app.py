@@ -32,10 +32,15 @@ if 'settings' not in st.session_state:
     st.session_state['settings'] = {}
 
 # App layout
-tab1, tab2, tab3, tab4 = st.tabs(["Internet search", "Have a conversation", "Create your Assistant", "Settings"])
+tab1, tab2, tab3, tab4 = st.tabs(["Have a conversation", "Internet search", "Create your Assistant", "Settings"])
 
-# Internet search tab
+# Have a conversation tab
 with tab1:
+    response = st.container()
+    chat = st.container()
+    
+# Internet search tab
+with tab2:
     st.markdown("<span style='font-size:2em'>\
         Tell the Assistant what to research about.</span>", unsafe_allow_html=True)
     st.markdown("This tab allows you to give information from across the internet to the Assistant AI. \
@@ -47,11 +52,6 @@ with tab1:
     unique_searches.insert(0,'')
     initial_search = st.selectbox('Search history', unique_searches, index=0)
     search = st.container()
-
-# Have a conversation tab
-with tab2:
-    response = st.container()
-    chat = st.container()
 
 with tab3:
     st.write("<span style='font-size:2em'>Comming soon...</span>", unsafe_allow_html=True)
@@ -71,21 +71,10 @@ with search:
                 told it all the topics to search for, you can have a conversation with it in the \
                     'Have a conversation' tab.")
         google_submitted = st.form_submit_button("Submit")
-        
-        query_history = google_history['query'].unique().tolist()
-        
+
         # If the user pressed submit to make a new search or selected an existing one from history
         if (google_submitted and user_query_text != '') or initial_search != '':
-            # Make an internet search if the same search was not done before
-            if user_query_text not in query_history:
-                search_results = google_search(user_query_text, 3)
-                update_history(search_results)
-            else:
-                search_results = google_history    
-            
-            similar_results = find_top_similar_results(search_results, user_query_text, 5)
-            google_findings = similar_results['text'].to_list()
-            links = similar_results['link'].to_list()
+            google_findings, links = make_new_internet_search(user_query_text)
             
             display_search_results(user_query_text, google_findings, links)
 
@@ -93,8 +82,10 @@ with search:
 with chat:
     with st.form('Chat'):
         user_chat_text = st.text_area(label="Ask the Assistant")
-        chat_submitted = st.form_submit_button("Submit")
-        settings = assistant_settings(chat_submitted)
+        col1, col2 = st.columns(2)
+        chat_submitted = col1.form_submit_button("Submit")
+        settings = assistant_settings(chat_submitted, col2)
+    add_searches(settings)
 
 
 # User input is used here to process and display GPT's response

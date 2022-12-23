@@ -16,7 +16,6 @@ def find_top_similar_results(df: pd.DataFrame, query: str, n: int):
 
 
 def create_embedding(query):
-    print(st.session_state['api_key'][-4:])
     return get_embedding(query, engine="text-embedding-ada-002")
     try:
         return get_embedding(query, engine="text-embedding-ada-002")

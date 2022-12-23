@@ -1,11 +1,14 @@
 import streamlit as st
 import bs4
+import io
+import re
+import PyPDF2
 import requests
 from logging import warning
 import threading
 import pandas as pd
 import database as db
-from gpt_api import create_embedding
+from gpt_api import create_embedding, find_top_similar_results
 from utils import markdown_litteral, separate_list
 
 
@@ -19,12 +22,12 @@ def google_search(search: str, search_depth: int):
         st.warning("There was a problem with this services's internet.😵  \n\
                     If you got HTTPError: 429, that means this services's IP \
                     is being rate limited. If you experience this, \
-                    please report the issue at https://github.com/farrael004/Quest/issues.")
+                    please report the issue at https://github.com/farrael004/Quest/issues.  \
+                    \n  \nYou can try again by refreshing the page.")
         raise
     
     links = find_links_from_search(res)
     largest_results = page_search(search, search_depth, links)
-
     return largest_results
 
 
@@ -50,8 +53,8 @@ def page_search(search, search_depth, links):
         while links_explored < search_depth or links_attempted == len(links):
             links_attempted += 1
             if links == []:
-                st.warning("No internet results found. 😢")
-                st.stop() 
+                st.warning(f"No internet results found for \"{search}\".😢  \nTry again with a different query.")
+                st.stop()
             if links[links_attempted] in link_history: continue
             # If this link does not work, go to the next one
             try:
@@ -61,7 +64,7 @@ def page_search(search, search_depth, links):
                 continue
             
             # Create a table with the useful texts from the page, the page's link, and the query used 
-            useful_text = extract_useful_text_from_page(res)
+            useful_text = extract_useful_text(res)
             link_list = [links[links_attempted] for i in range(len(useful_text))] # Creates a list of the same link to match the length of useful_text
             query_list = [search for i in range(len(useful_text))] # Creates a list of the same query to match the length of useful_text
             link_results = pd.DataFrame({'text': useful_text, 'link': link_list, 'query': query_list})
@@ -79,14 +82,44 @@ def page_search(search, search_depth, links):
     return largest_results
 
 
-def extract_useful_text_from_page(res):
+def extract_useful_text(res):
+    if res.headers['Content-Type'] == 'application/pdf':
+        return extract_from_pdf(res)
+    return extract_from_html(res)
+
+
+def extract_from_html(res):
     soup = bs4.BeautifulSoup(res.text, 'html.parser')
     link_text = list(set(soup.get_text().splitlines())) # Separate all text by lines and remove duplicates
     useful_text = [s for s in link_text if len(s) > 30] # Get only strings above 30 characters
     useful_text = split_paragraphs(useful_text) # If the string is too long it will split it at full stops '. '
-    useful_text = split_paragraphs(useful_text) # Do it again just for good measure (otherwise it wouldn't work for all strings for some reason. Try searching "Who is Elon Musk" to test this issue)
-    return useful_text
+    return split_paragraphs(useful_text) # Do it again just for good measure (otherwise it wouldn't work for all strings for some reason. Try searching "Who is Elon Musk" to test this issue)
 
+
+def extract_from_pdf(response):
+    pdf_content = response.content
+    pdf_reader = PyPDF2.PdfFileReader(io.BytesIO(pdf_content)) # Open the PDF file using PyPDF2
+    # Extract the text from the PDF file
+    pdf_text = ''
+    for page_num in range(pdf_reader.getNumPages()):
+        pdf_text += pdf_reader.getPage(page_num).extractText()
+
+    pdf_text = re.sub(r'\r\n|\r|\n', ' ', pdf_text) # Remove new lines 
+    return split_paragraphs([pdf_text], 500)
+
+def make_new_internet_search(user_query_text):
+    google_history = get_user_search_history()
+    query_history = google_history['query'].unique().tolist()
+    if user_query_text not in query_history:
+        search_results = google_search(user_query_text, 3)
+        update_history(search_results)
+    else:
+        search_results = google_history    
+            
+    similar_results = find_top_similar_results(search_results, user_query_text, 5)
+    google_findings = similar_results['text'].to_list()
+    links = similar_results['link'].to_list()
+    return google_findings, links
 
 def split_paragraphs(paragraphs, max_length=1000):
     split_paragraphs = []
@@ -172,6 +205,7 @@ def all_are_valid_links(links):
         try:
             res = requests.get(link)
             res.raise_for_status()
+            return True
         except:
             st.warning(f"The following link does not respond. Please check if it is correct and try again. \
                   \n{link}",icon="⚠️")

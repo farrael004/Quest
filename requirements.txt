@@ -11,3 +11,4 @@ streamlit-authenticator==0.1.5
 deta==1.1.0
 streamlit-extras==0.2.4
 cryptography==38.0.4
+PyPDF2==2.12.0

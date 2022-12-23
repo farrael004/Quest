@@ -8,7 +8,7 @@ from datetime import datetime
 from gpt_api import find_top_similar_results, gpt3_call
 from gpt_api import create_embedding
 from utils import markdown_litteral, num_of_tokens
-from internet_search import page_search, update_history, all_are_valid_links
+from internet_search import *
 
 
 def load_assistant_settings():
@@ -98,7 +98,16 @@ def display_assistant_response(similar_google_results, prompt, answer):
         st.markdown(':green[Tokens used: ]' + f':green[{str(num_of_tokens(prompt))}]')
    
 
-def assistant_settings(chat_submitted):
+def assistant_settings(chat_submitted, col2):
+    settings = {}
+    if 'answer_with_search' not in st.session_state['settings']:
+        st.session_state['settings']['answer_with_search'] = True
+    settings['answer_with_search'] = col2.checkbox('Search internet to answer',
+                                        value=True,
+                                        help="When checked, the Assistant will make a new \
+                                            search using your question as the query. If you \
+                                                disable this, the Assistant will use only the \
+                                                        search history.")
     with st.expander("Assistant settings"):
         col1, col2 = st.columns(2)
         archetypes, default_setting_index = load_assistant_settings()
@@ -114,8 +123,7 @@ def assistant_settings(chat_submitted):
             st.session_state['settings']['consult_search_history'] = True
             st.session_state['settings']['specify_sources'] = ''
             st.session_state['settings']['temperature'] = 1.0
-                
-        settings = {}    
+                  
         settings['temperature'] = col2.slider('Temperature',
                                               min_value=0.0,max_value=1.0,value=1.0,step=0.01,
                                               help="Determine how random the Assistant responses are \
@@ -158,7 +166,6 @@ def submit_user_message(settings, user_chat_text, chat_submitted):
     st.write('👤User: ' + user_chat_text)
 
     # Find relevant search results and conversation entries to craft the AI prompt
-    
     similar_google_results = get_info_from_internet(user_chat_text, settings)
     with st.spinner('Sending message...'):
         similar_conversation = find_top_similar_results(st.session_state['conversation'],
@@ -192,7 +199,22 @@ def submit_user_message(settings, user_chat_text, chat_submitted):
     display_assistant_response(similar_google_results, prompt, answer)
 
 
+def add_searches(settings):
+    with st.expander("Add searches"):
+        num_of_queries = st.number_input("Number of additional searches", min_value=0, value=1)
+        
+        settings['additional_searches'] = []
+        for i in range(num_of_queries):
+            search = st.text_input("Search query", key=i)
+            if search != '':
+                settings['additional_searches'].append(search)
+                
+    return settings
+
+
 def get_info_from_internet(user_chat_text, settings):
+    answer_with_search = settings['answer_with_search']
+    additional_searches = settings['additional_searches']
     specify_sources = settings['specify_sources'].split(', ')
     consult_search_history = settings['consult_search_history']
     num_of_excerpts = settings['num_of_excerpts']
@@ -201,21 +223,44 @@ def get_info_from_internet(user_chat_text, settings):
     
     sources_content = pd.DataFrame()
     if specify_sources != ['']:
-        already_seen_results = history[history['link'].isin(specify_sources)]
-        links_not_in_history = [value for value in specify_sources if value not in history['link'].values]
-        if all_are_valid_links(links_not_in_history):
-            sources_content = page_search(user_chat_text,len(links_not_in_history),links_not_in_history)
-            update_history(sources_content)
-        sources_content = pd.concat([already_seen_results, sources_content])
+        sources_content = search_new_links(user_chat_text, specify_sources, history, sources_content)
     
+    if additional_searches != []:
+        sources_content = search_new_queries(additional_searches, history, sources_content)
+            
+    if answer_with_search:       
+       sources_content = search_new_queries([user_chat_text], history, sources_content)
+        
     if not consult_search_history:
-        if specify_sources == ['']: return pd.DataFrame()
+        if sources_content.empty: return pd.DataFrame()
         return find_top_similar_results(sources_content, user_chat_text, num_of_excerpts)
     
     all_results = st.session_state['google_history']
     all_results = pd.concat([all_results, sources_content])
         
     return find_top_similar_results(all_results, user_chat_text, num_of_excerpts)
+
+def search_new_links(user_chat_text, specify_sources, history, sources_content):
+    already_seen_results = history[history['link'].isin(specify_sources)]
+    links_not_in_history = [value for value in specify_sources if value not in history['link'].values]
+    #print()
+    if all_are_valid_links(links_not_in_history):
+        sources_content = page_search(user_chat_text,len(links_not_in_history),links_not_in_history)
+        update_history(sources_content)
+        sources_content = pd.concat([sources_content, already_seen_results])
+    return sources_content
+
+def search_new_queries(additional_searches, history, sources_content):
+    already_seen_results = history[history['query'].isin(additional_searches)]
+    query_not_in_history = [value for value in additional_searches if value not in history['query'].values]
+    sources_content = pd.concat([sources_content, already_seen_results])
+    queries_results = pd.DataFrame()
+    for search in query_not_in_history:
+        query_results = google_search(search, 3)
+        queries_results = pd.concat([queries_results,query_results])
+    update_history(queries_results)
+    sources_content = pd.concat([sources_content, queries_results])
+    return sources_content
 
 def remove_timestamp(string):
     # Compile a regex pattern to match the timestamp at the end of the string
