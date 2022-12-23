@@ -68,7 +68,7 @@ def delete_user_login(username):
 
 def insert_api_key(username, api_key):
     now = datetime.datetime.now()
-    thirty_days_from_now = now + datetime.timedelta(days=30)
+    thirty_days_from_now = now + datetime.timedelta(days=1)
     try: # If key exists in the database
         get_api_key(username)
         return db_api_key.update({'api_key': encrypt(api_key)}, username, expire_at=thirty_days_from_now)
