@@ -22,7 +22,6 @@ def api_key_form():
         save_api_key = st.checkbox('Remember my key.',disabled=True)
 
     st.markdown("[Find your API key here](https://beta.openai.com/account/api-keys)")
-    st.markdown("[Make sure to set a rate limit here](https://beta.openai.com/account/billing/limits)")
     
     if api_submitted:
         test_api_key(api_key)

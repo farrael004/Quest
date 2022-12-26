@@ -3,7 +3,6 @@ import bs4
 import io
 import re
 import PyPDF2
-import pickle
 import requests
 from logging import warning
 import threading
@@ -219,21 +218,3 @@ def delete_search_history():
 
 def delete_history_button():
     st.button('Delete search history', on_click=delete_search_history)
-    
-    
-def upload_history():
-    file = st.file_uploader("Upload search history:")
-    if file is not None:
-        history = pickle.loads(file.getvalue())
-        st.write(history)
-        st.session_state['google_history'] = history
-    
-    
-def download_history_button():
-    history = st.session_state['google_history']
-    history = pickle.dumps(history)
-    st.download_button(
-    label="Download search history",
-    data=history,
-    file_name="history.pickle"
-)

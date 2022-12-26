@@ -193,7 +193,6 @@ def submit_user_message(settings, user_chat_text, chat_submitted):
                            stop='User:')
         answer = remove_timestamp(answer)
     add_conversation_entry('User: ' + user_chat_text + f' ({current_time})')
-    date = datetime.now()
     current_time = f'{date.strftime("%I:%M:%S %p")}'
     add_conversation_entry('Assistant: ' + answer + f' ({current_time})')
     
@@ -236,13 +235,15 @@ def get_info_from_internet(user_chat_text, settings):
         if sources_content.empty: return pd.DataFrame()
         return find_top_similar_results(sources_content, user_chat_text, num_of_excerpts)
     
-    all_results = pd.concat([history, sources_content])
+    all_results = st.session_state['google_history']
+    all_results = pd.concat([all_results, sources_content])
         
     return find_top_similar_results(all_results, user_chat_text, num_of_excerpts)
 
 def search_new_links(user_chat_text, specify_sources, history, sources_content):
     already_seen_results = history[history['link'].isin(specify_sources)]
     links_not_in_history = [value for value in specify_sources if value not in history['link'].values]
+    #print()
     if all_are_valid_links(links_not_in_history):
         sources_content = page_search(user_chat_text,len(links_not_in_history),links_not_in_history)
         update_history(sources_content)
@@ -261,32 +262,7 @@ def search_new_queries(additional_searches, history, sources_content):
     sources_content = pd.concat([sources_content, queries_results])
     return sources_content
 
-
 def remove_timestamp(string):
     # Compile a regex pattern to match the timestamp at the end of the string
     pattern = re.compile(r'\(\d\d:\d\d:\d\d [AP]M\)$')
     return pattern.sub('', string) # Use the regex to replace the timestamp with an empty string
-
-
-def bot_settings(settings):
-    with st.expander("Instruct the bot",expanded=True):
-        st.write("<span style='font-size:1.2em'>Explain to the bot how it should behave</span>",
-                unsafe_allow_html=True)
-        
-        default_value = "You are a friendly and helpful AI assistant. You were created to answer concisely questions about OccamDAO."
-        if 'archetype' in settings:
-            default_value = settings['archetype']['mood']
-            
-        mood = st.text_area("What should this bot pretend to be.",value=default_value,
-                            help="This will determine the bot's temperament and" + \
-                                "overall attitude towards answers")
-            
-        default_value = "WARNING: The user may ask about information that is not in the documents you were provided. If that is the case, try to answer the question based only on the facts given."
-        if 'archetype' in settings:
-            default_value = settings['archetype']['warn_assistant']
-            
-        warn_assistant = st.text_area("What should this bot NOT deviate from.",value=default_value,
-                            help="This will warn the bot of what to do and not to do")
-        
-        settings['archetype']['mood'] = mood
-        settings['archetype']['warn_assistant'] = warn_assistant
