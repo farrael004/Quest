@@ -31,8 +31,10 @@ openai.api_key = load_api_key()
 if 'settings' not in st.session_state:
     st.session_state['settings'] = {}
 
+settings = st.session_state['settings']
+
 # App layout
-tab1, tab2, tab3, tab4 = st.tabs(["Have a conversation", "Internet search", "Create your Assistant", "Settings"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Have a conversation", "Internet search", "Create your Assistant", "Settings", "About"])
 
 # Have a conversation tab
 with tab1:
@@ -58,7 +60,12 @@ with tab3:
     st.write("In this page you will be able to create custom Assistant archetypes.")
 
 with tab4:
+    bot_settings(settings)
+    
+    
     #logout_button()
+    download_history_button()
+    upload_history()
     reset_key_button()
     #delete_history_button()
     #delete_user_button()
@@ -82,7 +89,7 @@ with search:
 with chat:
     with st.form('Chat'):
         user_chat_text = st.text_area(label="Ask the Assistant")
-        col1, col2 = st.columns(2)
+        col1, col2 = st.columns((1,7))
         chat_submitted = col1.form_submit_button("Submit")
         settings = assistant_settings(chat_submitted, col2)
     add_searches(settings)
@@ -102,12 +109,10 @@ with response:
 
 add_vertical_space(4)
 
-col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns((1,2))
 with col1:
     buy_me_a_coffee.button('farrael004', floating=False)
 with col2:
     st.markdown("By [Rafael Moraes](https://github.com/farrael004)")
     badge(type="github", name="farrael004/Quest")
-with col3:
-    st.container()
 
