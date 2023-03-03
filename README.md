@@ -9,7 +9,7 @@
 
 First, you will need an API key from OpenAI. [Click here to get your API key](https://beta.openai.com/account/api-keys). Make sure to store this key in a safe place.
 
-Currently the web app is deployed [here](https://farrael004-quest-streamlit-app-deployment-experimental-76f30t.streamlit.app/).
+Currently the web app is deployed [here](https://aichat.streamlit.app/).
 
 ## Usage
 
@@ -34,11 +34,11 @@ Using the most relevant search results and most relevant chat history, the Assis
 ---
 ### Assistant settings
 
-The Assistant settings serves to determine how the Assistant will behave. If you set it to `Strictly Factual`, it will try to not say any facts beyond the Google searches. `Very Creative` will still use the searches, but allow itself to generate creative responses while being less concerned with factuality.
+The Assistant settings serves to determine how the Assistant will behave. If you set it to `Strictly Factual`, it will try to not say any facts beyond the Google searches. `Creative` will still use the searches, but allow itself to generate creative responses while being less concerned with factuality.
 
 ## Create your own Assistant
 
-There are 5 default settings that can be chosen to customize how factual or creative the Assistant is. However, you can create your own settings to open for many more possibilities. To do this, navigate to the `conversation_settings` folder and open the `_create_setting.py` file.
+There are a few default settings that can be chosen to customize how the Assistant is behaves. However, you can create your own settings to open for many more possibilities. To do this, navigate to the `conversation_settings` folder and open the `_create_setting.py` file.
 
 ![Tutorial4](tutorial/Tutorial4.png)
 
