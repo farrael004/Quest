@@ -8,21 +8,21 @@ from deta import Deta  # pip install deta
 from utils import tell_to_reload_page
 
 
-DETA_KEY = st.secrets["DETA_KEY"]
-KEY_MAP = bytes(st.secrets['KEY_MAP'], "utf-8")
+#DETA_KEY = st.secrets["DETA_KEY"]
+#KEY_MAP = bytes(st.secrets['KEY_MAP'], "utf-8")
 
-deta = Deta(DETA_KEY)
-cipher = Fernet(KEY_MAP)
-
-
-def encrypt(data):
-    if type(data) != bytes: data = string_to_bytes(data) 
-    return bytes_to_string(cipher.encrypt(data))
+#deta = Deta(DETA_KEY)
+#cipher = Fernet(KEY_MAP)
 
 
-def decrypt(data):
-    if type(data) != bytes: data = string_to_bytes(data) 
-    return bytes_to_string(cipher.decrypt(data))
+#def encrypt(data):
+#    if type(data) != bytes: data = string_to_bytes(data) 
+#    return bytes_to_string(cipher.encrypt(data))
+
+
+#def decrypt(data):
+#    if type(data) != bytes: data = string_to_bytes(data) 
+#    return bytes_to_string(cipher.decrypt(data))
 
 
 def string_to_bytes(string: str):
@@ -33,10 +33,10 @@ def bytes_to_string(bytes: bytes):
     return bytes.decode("utf-8")
 
 
-db_login = deta.Base("quest_users")
-db_api_key = deta.Base("quest_api_key")
-db_search_history = deta.Base("quest_internet_search")
-db_user_settings = deta.Base("quest_user_settings")
+#db_login = deta.Base("quest_users")
+#db_api_key = deta.Base("quest_api_key")
+#db_search_history = deta.Base("quest_internet_search")
+#db_user_settings = deta.Base("quest_user_settings")
 
 
 def insert_user(username, name, password):

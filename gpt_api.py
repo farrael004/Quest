@@ -16,6 +16,7 @@ def find_top_similar_results(df: pd.DataFrame, query: str, n: int):
 
 
 def create_embedding(query):
+    query = query.encode(encoding='ASCII', errors='ignore').decode()
     return get_embedding(query, engine="text-embedding-ada-002")
     try:
         return get_embedding(query, engine="text-embedding-ada-002")
@@ -35,16 +36,16 @@ def test_api_key(api_key):
             st.stop()
 
 
-def gpt3_call(prompt: str, tokens: int, temperature: int=1, stop=None):
+def gpt3_call(prompt, tokens: int, temperature: int=1, stop=None):
     try:
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=prompt,
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=prompt,
             max_tokens=tokens,
-            n=1,
             stop=stop,
             temperature=temperature)
 
-        return response["choices"][0]["text"].replace('\n', '  \n')
-    except:
-        api_error_warning()    
+        return response["choices"][0]['message']["content"].replace('\n', '  \n')
+    except Exception as e:
+        print(e)
+        api_error_warning()   

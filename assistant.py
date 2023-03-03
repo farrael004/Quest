@@ -82,10 +82,15 @@ def create_prompt(settings,
                 sources are:  \n" + '\n'.join(similar_google_results['text'].to_list()) + "\n"
     prompt += 'These are the relevant entries from the conversation so far (in order of importance):\n' + \
             '\n'.join(similar_conversation['text'].to_list()) + '\nThese are the last two messages:\n\
-                ' + st.session_state['conversation']['text'].iloc[-1] + '\nUser: \
-                    ' + user_chat_text + f' ({current_time})\n' + warn_assistant + '\nAssistant:'
+                ' + st.session_state['conversation']['text'].iloc[-1] + warn_assistant #'\nUser: \
+                    #' + user_chat_text + f' ({current_time})\n' + warn_assistant  + '\nAssistant:'
+                    
+    prompt_model = [
+        {'role': 'system', 'content': prompt},
+        {'role': 'user', 'content': user_chat_text}
+    ]
            
-    return prompt
+    return prompt, prompt_model
 
 def display_assistant_response(similar_google_results, prompt, answer):
     st.markdown('---')
@@ -176,18 +181,20 @@ def submit_user_message(settings, user_chat_text, chat_submitted):
     current_time = f'{date.strftime("%I:%M:%S %p")}'
     current_date_and_time = f'Current time is {date.strftime("%I:%M %p %A %B %d %Y")}.\n'
     
-    prompt = create_prompt(settings,
-                           user_chat_text,
-                           similar_google_results,
-                           similar_conversation,
-                           current_time,
-                           current_date_and_time)
+    prompt_text, prompt_model = create_prompt(
+        settings,
+        user_chat_text,
+        similar_google_results,
+        similar_conversation,
+        current_time,
+        current_date_and_time
+    )
     
-    tokens = num_of_tokens(prompt)
+    tokens = num_of_tokens(prompt_text)
     
     # Send prompt to the AI and record it to chat history
     with st.spinner('Generating response...'):
-        answer = gpt3_call(prompt,
+        answer = gpt3_call(prompt_model,
                            tokens=4000 - tokens,
                            temperature=settings['temperature'],
                            stop='User:')
@@ -196,7 +203,7 @@ def submit_user_message(settings, user_chat_text, chat_submitted):
     current_time = f'{date.strftime("%I:%M:%S %p")}'
     add_conversation_entry('Assistant: ' + answer + f' ({current_time})')
     
-    display_assistant_response(similar_google_results, prompt, answer)
+    display_assistant_response(similar_google_results, prompt_text, answer)
 
 
 def add_searches(settings):
@@ -256,7 +263,7 @@ def search_new_queries(additional_searches, history, sources_content):
     sources_content = pd.concat([sources_content, already_seen_results])
     queries_results = pd.DataFrame()
     for search in query_not_in_history:
-        query_results = google_search(search, 3)
+        query_results = ddg_search(search, 3)
         queries_results = pd.concat([queries_results,query_results])
     update_history(queries_results)
     sources_content = pd.concat([sources_content, queries_results])

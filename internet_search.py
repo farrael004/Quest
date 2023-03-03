@@ -8,8 +8,20 @@ from logging import warning
 import threading
 import pandas as pd
 import database as db
+from duckduckgo_search import ddg
 from gpt_api import create_embedding, find_top_similar_results
 from utils import markdown_litteral, separate_list
+
+
+def ddg_search(query: str, numResults: int, region: str=None, time_period=None):
+    
+    results = ddg(query, region, 'on', time_period, numResults)
+    results = pd.DataFrame(results)
+    results.columns = ['title', 'link', 'text']
+    results['query'] = [query for _ in results.index]
+    results['text_length'] = results['text'].str.len()
+    results['ada_search'] = results['text'].apply(lambda x: create_embedding(x))
+    return results
 
 
 def google_search(search: str, search_depth: int):
@@ -111,7 +123,7 @@ def make_new_internet_search(user_query_text):
     google_history = get_user_search_history()
     query_history = google_history['query'].unique().tolist()
     if user_query_text not in query_history:
-        search_results = google_search(user_query_text, 3)
+        search_results = ddg_search(user_query_text, 3)
         update_history(search_results)
     else:
         search_results = google_history    
