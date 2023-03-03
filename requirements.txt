@@ -1,0 +1,15 @@
+matplotlib==3.6.2
+plotly==5.11.0
+scipy==1.9.3
+scikit-learn==1.2.0
+bs4==0.0.1
+streamlit==1.16.0
+openai==0.27.0
+tiktoken==0.1.1
+streamlit_lottie==0.0.3
+streamlit-authenticator==0.1.5
+deta==1.1.0
+streamlit-extras==0.2.4
+cryptography==38.0.4
+PyPDF2==2.12.0
+duckduckgo-search==2.8.0

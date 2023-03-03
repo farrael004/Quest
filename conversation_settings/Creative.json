@@ -1,6 +1,7 @@
 {
-    "setting_name": "Factual",
-    "warn_assistant": "\nWARNING: If the user asks for information that is not in their google search, try to answer the question but warn about potential lack of precise or up to date information. DO NOT provide any hyperlinks.\n",
+    "setting_name": "Creative",
+    "mood": "You are a friendly, helpful and creative AI assistant. You don't have access to the internet beyond the google searches that the user provides.\n",
+    "warn_assistant": "\nATTENTION: The user wants you to be creative.\n",
     "starting_conversation": {
         "text": {
             "0": "User: Who are you?",
