@@ -23,7 +23,7 @@ def load_lottie_url(url: str):
         return None
     
 def api_error_warning():
-    st.warning("Something went wrong.  \n  \n> An error occured when trying to send your request to OpenAI.There are a few reasons why this could happen:  \n> - This service cannot communicate with OpenAI's API.  \n> - You exceeded your rate limit. Check your usage and limit [here](https://beta.openai.com/account/usage)  \n> - You entered an invalid API key. Try getting a new key [here](https://beta.openai.com/account/api-keys) and reset your API key in the settings tab.",
+    st.warning("Something went wrong.  \n  \n> An error occured when trying to send your request to OpenAI.There are a few reasons why this could happen:  \n> - You exceeded your rate limit. Make sure you are not using free credits as the rate limit in a free account does not permit using this app.  \n> - This service cannot communicate with OpenAI's API.  \n> - You exceeded your allowance. Check your usage and limit [here](https://beta.openai.com/account/usage)  \n> - You entered an invalid API key. Try getting a new key [here](https://beta.openai.com/account/api-keys) and reset your API key in the settings tab.",
             icon='⚠️')
     
 def separate_list(iterable, n):

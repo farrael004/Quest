@@ -195,7 +195,7 @@ def submit_user_message(settings, user_chat_text, chat_submitted):
     # Send prompt to the AI and record it to chat history
     with st.spinner('Generating response...'):
         answer = gpt3_call(prompt_model,
-                           tokens=4000 - tokens,
+                           tokens=3000 - tokens,
                            temperature=settings['temperature'],
                            stop='User:')
         answer = remove_timestamp(answer)

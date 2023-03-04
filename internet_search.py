@@ -14,13 +14,29 @@ from utils import markdown_litteral, separate_list
 
 
 def ddg_search(query: str, numResults: int, region: str=None, time_period=None):
+    try:
+        results = ddg(query, region, 'on', time_period, numResults)
+    except Exception as e:
+        print(e)
+        return failed_ddg_search(query)
     
-    results = ddg(query, region, 'on', time_period, numResults)
+    if results == None:
+        return failed_ddg_search(query)
+    
+    st.write(results)
     results = pd.DataFrame(results)
     results.columns = ['title', 'link', 'text']
     results['query'] = [query for _ in results.index]
     results['text_length'] = results['text'].str.len()
     results['ada_search'] = results['text'].apply(lambda x: create_embedding(x))
+    return results
+
+
+def failed_ddg_search(query: str):
+    st.warning(f'Could not find any internet results for the following query:  \n  \n\
+            {query}  \n  \nTo avoid seing this error, disable the "Search internet to answer" option.\
+                 whenever not asking something that you would ask to a search engine.', icon='😵')
+    results = pd.DataFrame(columns=['title', 'link', 'text', 'query', 'text_length', 'ada_search'])
     return results
 
 
