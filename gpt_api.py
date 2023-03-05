@@ -16,6 +16,7 @@ def find_top_similar_results(df: pd.DataFrame, query: str, n: int):
 
 
 def create_embedding(query):
+    if query == '': query = ' '
     query = query.encode(encoding='ASCII', errors='ignore').decode()
     return get_embedding(query, engine="text-embedding-ada-002")
     try:
